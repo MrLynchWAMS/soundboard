@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customizable Soundboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Compression library for URL sharing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <style>
         :root {
             --background-color: #111827; /* gray-900 */
@@ -104,6 +106,7 @@
              <div id="edit-actions" class="hidden flex-wrap items-center justify-center sm:justify-start gap-4 mt-4 pt-4 border-t border-gray-700">
                 <button id="addSectionBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-plus"></i> Add Section</button>
                 <button id="aiCreateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm">✨ Create with AI</button>
+                <button id="shareBtn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-share-alt"></i> Share</button>
                 <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-file-export"></i> Export</button>
                 <button onclick="document.getElementById('importInput').click()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-file-import"></i> Import</button>
                 <input type="file" id="importInput" class="hidden" accept=".json">
@@ -182,6 +185,22 @@
             </form>
         </div>
     </div>
+    
+    <div id="shareModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-lg m-4 border border-border-color modal">
+            <h2 class="text-2xl font-bold mb-4">Share Your Soundboard</h2>
+            <p class="text-text-secondary mb-4 text-sm">Copy this link to share your current layout. Anyone with the link will see your soundboard exactly as you've set it up.</p>
+            <div class="flex gap-2">
+                <input type="text" id="shareLinkInput" readonly class="w-full bg-gray-900/50 border border-border-color text-text-secondary rounded-lg px-3 py-2 focus:outline-none">
+                <button id="copyLinkBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+            </div>
+             <div class="flex justify-end mt-6">
+                <button id="shareCloseBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Close</button>
+            </div>
+        </div>
+    </div>
 
     <div id="confirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
         <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-sm m-4 border border-border-color modal">
@@ -212,12 +231,16 @@
         const aiModal = document.getElementById('aiModal');
         const aiModalForm = document.getElementById('aiModalForm');
         const aiCancelBtn = document.getElementById('aiCancelBtn');
+        const shareModal = document.getElementById('shareModal');
         
         // Buttons
         const addSectionBtn = document.getElementById('addSectionBtn');
         const aiCreateBtn = document.getElementById('aiCreateBtn');
         const exportBtn = document.getElementById('exportBtn');
         const importInput = document.getElementById('importInput');
+        const shareBtn = document.getElementById('shareBtn');
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+        const shareCloseBtn = document.getElementById('shareCloseBtn');
         
         // --- State ---
         let audioContext = null;
@@ -240,14 +263,35 @@
 
         // --- Core Functions ---
         const loadData = () => {
-            const savedData = localStorage.getItem('soundboardData');
-            soundData = savedData ? JSON.parse(savedData) : initialData;
+            try {
+                // Prioritize loading from URL hash
+                if (window.location.hash && window.location.hash.startsWith('#data=')) {
+                    const encodedData = window.location.hash.substring(6);
+                    const compressed = atob(encodedData).split('').map(c => c.charCodeAt(0));
+                    const decompressed = pako.inflate(new Uint8Array(compressed), { to: 'string' });
+                    soundData = JSON.parse(decompressed);
+                    showNotification('Loaded soundboard from shared link!', 'info');
+                } else {
+                    const savedData = localStorage.getItem('soundboardData');
+                    soundData = savedData ? JSON.parse(savedData) : initialData;
+                }
+            } catch (error) {
+                console.error("Failed to load data:", error);
+                showNotification("Could not load data. Using default.", "error");
+                soundData = initialData;
+            }
             const savedGridSize = localStorage.getItem('soundboardButtonGridSize') || '8';
             gridSizeSlider.value = savedGridSize;
             renderSoundboard();
         };
 
-        const saveData = () => localStorage.setItem('soundboardData', JSON.stringify(soundData));
+        const saveData = () => {
+            localStorage.setItem('soundboardData', JSON.stringify(soundData));
+            // If the user modifies a shared board, we clear the hash to avoid confusion.
+            if (window.location.hash) {
+                history.pushState("", document.title, window.location.pathname + window.location.search);
+            }
+        };
         const saveGridSize = () => localStorage.setItem('soundboardButtonGridSize', gridSizeSlider.value);
 
         function playSound(url) {
@@ -442,6 +486,7 @@
             modal.classList.add('hidden');
             aiModal.classList.add('hidden');
             confirmModal.classList.add('hidden');
+            shareModal.classList.add('hidden');
         }
 
         modalForm.addEventListener('submit', (e) => {
@@ -486,7 +531,7 @@
             showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} saved successfully!`);
         });
 
-        [cancelBtn, aiCancelBtn].forEach(btn => btn.addEventListener('click', closeModal));
+        [cancelBtn, aiCancelBtn, shareCloseBtn].forEach(btn => btn.addEventListener('click', closeModal));
         addSectionBtn.addEventListener('click', () => openModal('section', 'add', {}));
 
         // --- AI Modal & Gemini API ---
@@ -622,7 +667,7 @@
             renderSoundboard();
         });
         
-        // --- Import / Export ---
+        // --- Import / Export / Share ---
         exportBtn.addEventListener('click', () => {
             const dataStr = JSON.stringify(soundData, null, 2);
             const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -655,6 +700,31 @@
             reader.readAsText(file);
         });
         
+        shareBtn.addEventListener('click', () => {
+            const jsonString = JSON.stringify(soundData);
+            const compressed = pako.deflate(jsonString);
+            const encodedData = btoa(String.fromCharCode.apply(null, compressed));
+            const shareLink = `${window.location.origin}${window.location.pathname}#data=${encodedData}`;
+            
+            const shareLinkInput = document.getElementById('shareLinkInput');
+            shareLinkInput.value = shareLink;
+            shareModal.classList.remove('hidden');
+            shareLinkInput.select();
+        });
+
+        copyLinkBtn.addEventListener('click', () => {
+            const shareLinkInput = document.getElementById('shareLinkInput');
+            shareLinkInput.select();
+            // Use execCommand for broader compatibility in sandboxed environments
+            try {
+                document.execCommand('copy');
+                showNotification('Link copied to clipboard!', 'info');
+            } catch (err) {
+                showNotification('Failed to copy link.', 'error');
+                console.error('Copy failed', err);
+            }
+        });
+
         // --- Initialize ---
         loadData();
     });
