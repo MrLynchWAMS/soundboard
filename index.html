@@ -62,6 +62,19 @@
         ::-webkit-scrollbar-track { background: var(--background-color); }
         ::-webkit-scrollbar-thumb { background: var(--button-bg); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--button-hover-bg); }
+        
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--accent-color);
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -94,6 +107,7 @@
              <div id="edit-actions" class="hidden flex-wrap items-center justify-center sm:justify-between gap-4 mt-4 pt-4 border-t border-gray-700">
                 <div class="flex items-center gap-2 flex-wrap justify-center">
                     <button id="addSectionBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-plus"></i> Add Section</button>
+                    <button id="aiCreateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm">✨ Create with AI</button>
                     <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-file-export"></i> Export</button>
                     <button onclick="document.getElementById('importInput').click()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-file-import"></i> Import</button>
                     <input type="file" id="importInput" class="hidden" accept=".json">
@@ -125,11 +139,11 @@
                 <input type="hidden" id="editId"><input type="hidden" id="editType"><input type="hidden" id="editSectionId">
                 <div id="form-group-name" class="mb-4">
                     <label for="itemName" class="block text-sm font-medium text-gray-300 mb-1">Name</label>
-                    <input type="text" id="itemName" class="w-full bg-gray-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <input type="text" id="itemName" class="w-full bg-gray-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div id="form-group-url" class="mb-4">
                     <label for="itemUrl" class="block text-sm font-medium text-gray-300 mb-1">Audio URL</label>
-                    <input type="url" id="itemUrl" class="w-full bg-gray-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://example.com/sound.mp3" required>
+                    <input type="text" id="itemUrl" class="w-full bg-gray-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://example.com/sound.mp3">
                 </div>
                 <div id="form-group-color" class="mb-4">
                     <label for="itemColor" class="block text-sm font-medium text-gray-300 mb-1">Button Color</label>
@@ -138,6 +152,25 @@
                 <div class="flex justify-end gap-3 mt-6">
                     <button type="button" id="cancelBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="aiModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-md m-4 border border-gray-700 modal">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">✨ Create with AI</h2>
+            <p class="text-gray-400 mb-4 text-sm">Enter a theme, and Gemini will generate a new section with sound ideas for you.</p>
+            <form id="aiModalForm">
+                <div class="mb-4">
+                    <label for="aiTheme" class="block text-sm font-medium text-gray-300 mb-1">Soundboard Theme</label>
+                    <input type="text" id="aiTheme" class="w-full bg-gray-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Pirate Battle, Office Pranks, Sci-Fi..." required>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" id="aiCancelBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
+                    <button type="submit" id="aiGenerateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center w-28">
+                        Generate
+                    </button>
                 </div>
             </form>
         </div>
@@ -169,9 +202,14 @@
         const modalForm = document.getElementById('modalForm');
         const cancelBtn = document.getElementById('cancelBtn');
         const confirmModal = document.getElementById('confirmModal');
+        const aiModal = document.getElementById('aiModal');
+        const aiModalForm = document.getElementById('aiModalForm');
+        const aiCancelBtn = document.getElementById('aiCancelBtn');
+        const aiGenerateBtn = document.getElementById('aiGenerateBtn');
 
         // Buttons
         const addSectionBtn = document.getElementById('addSectionBtn');
+        const aiCreateBtn = document.getElementById('aiCreateBtn');
         const exportBtn = document.getElementById('exportBtn');
         const importInput = document.getElementById('importInput');
         
@@ -184,19 +222,18 @@
         const initialData = [
             {
                 id: `section-${Date.now()}`,
-                title: 'Imported From Myinstants',
+                title: 'Imported From Myinstants (with working placeholder sounds)',
                 sounds: [
-                    // Corrected titles and replaced broken URLs with working ones
-                    { id: `sound-${Date.now() + 1}`, name: 'Vine Boom Sound Effect', url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_163a8f157b.mp3', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 2}`, name: 'Wii Sports Theme', url: 'https://cdn.pixabay.com/audio/2022/08/04/audio_39b5492d73.mp3', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 3}`, name: 'Taco Bell Bong', url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c3437c.mp3', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 4}`, name: 'Metal Gear Solid Alert', url: 'https://cdn.pixabay.com/audio/2023/04/05/audio_32688f24c3.mp3', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 5}`, name: 'LEEROY JENKINS', url: 'https://cdn.pixabay.com/audio/2022/04/22/audio_2c8d233200.mp3', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 6}`, name: 'Sad Trombone', url: 'https://cdn.pixabay.com/audio/2022/05/18/audio_74c0c1b483.mp3', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 7}`, name: 'Roblox Death Sound', url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_73ed4f1131.mp3', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 8}`, name: 'Correct Answer', url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c3b9c4a86f.mp3', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 9}`, name: 'Wrong Answer', url: 'https://cdn.pixabay.com/audio/2022/03/14/audio_db65913e11.mp3', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 10}`, name: '5 Second Countdown', url: 'https://www.myinstants.com/media/sounds/5-second-countdown.mp3', color: '#3b82f6' }
+                    { id: `sound-${Date.now() + 1}`, name: 'Vine Boom Sound Effect', url: 'https://actions.google.com/sounds/v1/impacts/big_punch.ogg', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 2}`, name: 'Wii Sports Theme', url: 'https://actions.google.com/sounds/v1/sports/bowling_strike.ogg', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 3}`, name: 'Taco Bell Bong', url: 'https://actions.google.com/sounds/v1/bells/chime.ogg', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 4}`, name: 'Metal Gear Solid Alert', url: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 5}`, name: 'LEEROY JENKINS', url: 'https://actions.google.com/sounds/v1/human/male_scream.ogg', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 6}`, name: 'Sad Trombone', url: 'https://actions.google.com/sounds/v1/cartoon/descending_trumpet.ogg', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 7}`, name: 'Roblox Death Sound', url: 'https://actions.google.com/sounds/v1/impacts/medium_slam.ogg', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 8}`, name: 'Correct Answer', url: 'https://actions.google.com/sounds/v1/positive/success.ogg', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 9}`, name: 'Wrong Answer', url: 'https://actions.google.com/sounds/v1/negative/failure.ogg', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 10}`, name: '5 Second Countdown', url: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg', color: '#3b82f6' }
                 ]
             }
         ];
@@ -418,16 +455,36 @@
 
         modalForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            if (!modalForm.checkValidity()) {
-                modalForm.reportValidity();
+
+            const nameInput = document.getElementById('itemName');
+            const urlInput = document.getElementById('itemUrl');
+            const type = document.getElementById('editType').value;
+            let isValid = true;
+
+            if (!nameInput.value.trim()) {
+                showNotification('Name is required.', 'error');
+                nameInput.focus();
+                isValid = false;
+            }
+            
+            if (type === 'sound' && isValid) {
+                try {
+                    new URL(urlInput.value);
+                } catch (_) {
+                    showNotification('Please enter a valid URL.', 'error');
+                    urlInput.focus();
+                    isValid = false;
+                }
+            }
+
+            if (!isValid) {
                 return;
             }
             
             const id = document.getElementById('editId').value;
-            const type = document.getElementById('editType').value;
             const sectionId = document.getElementById('editSectionId').value;
-            const name = document.getElementById('itemName').value;
-            const url = document.getElementById('itemUrl').value;
+            const name = nameInput.value;
+            const url = urlInput.value;
             const color = document.getElementById('itemColor').value;
 
             if (type === 'section') {
@@ -456,6 +513,103 @@
 
         cancelBtn.addEventListener('click', closeModal);
         addSectionBtn.addEventListener('click', () => openModal('section', 'add', {}));
+
+        // --- AI Modal & Gemini API ---
+        aiCreateBtn.addEventListener('click', () => {
+            aiModalForm.reset();
+            aiModal.classList.remove('hidden');
+        });
+        
+        aiCancelBtn.addEventListener('click', () => aiModal.classList.add('hidden'));
+
+        aiModalForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const themeInput = document.getElementById('aiTheme');
+            const theme = themeInput.value.trim();
+            if (!theme) {
+                showNotification('Please enter a theme.', 'error');
+                return;
+            }
+            await generateSoundIdeas(theme);
+        });
+        
+        async function generateSoundIdeas(theme) {
+            const generateBtn = document.getElementById('aiGenerateBtn');
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<div class="spinner"></div>';
+
+            const apiKey = ""; // API key is handled by the environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const systemPrompt = `You are a creative assistant for a soundboard app. Generate a list of 5 to 8 sound effect names based on a user's theme. Respond ONLY with a valid JSON array of strings. Do not include any other text, explanations, or markdown formatting. Example response for theme "Pirate Ship": ["Cannon Fire", "Sea Shanty", "Parrot Squawk", "Sword Fight", "Waves Crashing"]`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: `Theme: "${theme}"` }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: { type: "STRING" }
+                    }
+                }
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+
+                const result = await response.json();
+                const soundNamesText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (!soundNamesText) {
+                    throw new Error("Received an empty response from the AI.");
+                }
+
+                const soundNames = JSON.parse(soundNamesText);
+
+                const newSection = {
+                    id: `section-${Date.now()}`,
+                    title: theme,
+                    sounds: soundNames.map((name, index) => ({
+                        id: `sound-${Date.now() + index}`,
+                        name: name,
+                        url: 'https://actions.google.com/sounds/v1/foley/cassette_tape_button.ogg', // Default placeholder
+                        color: getRandomHexColor()
+                    }))
+                };
+
+                soundData.push(newSection);
+                saveData();
+                renderSoundboard();
+                aiModal.classList.add('hidden');
+                showNotification(`AI created the "${theme}" section!`, 'info');
+
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                showNotification("AI failed to generate ideas. Please try again.", 'error');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = 'Generate';
+            }
+        }
+        
+        function getRandomHexColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            // Generate darker, more muted colors to fit the theme
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 10)]; // Use 0-9 for darker shades
+            }
+            return color;
+        }
 
         // --- Confirmation Modal ---
         function openConfirmModal(actionText, onConfirm) {
