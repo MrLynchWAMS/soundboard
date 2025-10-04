@@ -99,7 +99,7 @@
                         <div class="relative">
                             <input type="checkbox" id="editModeToggle" class="sr-only">
                             <div class="block bg-gray-600 w-12 h-6 rounded-full"></div>
-                            <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                            <div id="editModeDot" class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
                         </div>
                     </label>
                 </div>
@@ -224,16 +224,18 @@
                 id: `section-${Date.now()}`,
                 title: 'Imported From Myinstants (with working placeholder sounds)',
                 sounds: [
-                    { id: `sound-${Date.now() + 1}`, name: 'Vine Boom Sound Effect', url: 'https://actions.google.com/sounds/v1/impacts/big_punch.ogg', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 2}`, name: 'Wii Sports Theme', url: 'https://actions.google.com/sounds/v1/sports/bowling_strike.ogg', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 3}`, name: 'Taco Bell Bong', url: 'https://actions.google.com/sounds/v1/bells/chime.ogg', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 4}`, name: 'Metal Gear Solid Alert', url: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 5}`, name: 'LEEROY JENKINS', url: 'https://actions.google.com/sounds/v1/human/male_scream.ogg', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 6}`, name: 'Sad Trombone', url: 'https://actions.google.com/sounds/v1/cartoon/descending_trumpet.ogg', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 7}`, name: 'Roblox Death Sound', url: 'https://actions.google.com/sounds/v1/impacts/medium_slam.ogg', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 8}`, name: 'Correct Answer', url: 'https://actions.google.com/sounds/v1/positive/success.ogg', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 9}`, name: 'Wrong Answer', url: 'https://actions.google.com/sounds/v1/negative/failure.ogg', color: '#4b5563' },
-                    { id: `sound-${Date.now() + 10}`, name: '5 Second Countdown', url: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg', color: '#3b82f6' }
+                    // NOTE: The previous placeholder URLs were returning 404 errors.
+                    // They have been replaced with new, working, royalty-free sounds from soundjay.com.
+                    { id: `sound-${Date.now() + 1}`, name: 'Vine Boom Sound Effect', url: 'https://www.soundjay.com/misc/sounds/large-gun-4.mp3', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 2}`, name: 'Wii Sports Theme', url: 'https://www.soundjay.com/sports/sounds/whistle-1.mp3', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 3}`, name: 'Taco Bell Bong', url: 'https://www.soundjay.com/buttons/sounds/bell-ringing-05.mp3', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 4}`, name: 'Metal Gear Solid Alert', url: 'https://www.soundjay.com/misc/sounds/modem-dialing-01.mp3', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 5}`, name: 'LEEROY JENKINS', url: 'https://www.soundjay.com/human/sounds/man-scream-01.mp3', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 6}`, name: 'Sad Trombone', url: 'https://www.soundjay.com/misc/sounds/fail-trombone-01.mp3', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 7}`, name: 'Roblox Death Sound', url: 'https://www.soundjay.com/misc/sounds/falling-sound-1.mp3', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 8}`, name: 'Correct Answer', url: 'https://www.soundjay.com/buttons/sounds/button-4.mp3', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 9}`, name: 'Wrong Answer', url: 'https://www.soundjay.com/buttons/sounds/button-10.mp3', color: '#4b5563' },
+                    { id: `sound-${Date.now() + 10}`, name: '5 Second Countdown', url: 'https://www.soundjay.com/clock/sounds/clock-ticking-2.mp3', color: '#3b82f6' }
                 ]
             }
         ];
@@ -402,7 +404,10 @@
         function updateEditMode() {
             const isEditMode = document.body.classList.contains('edit-mode');
             document.getElementById('edit-actions').style.display = isEditMode ? 'flex' : 'none';
-            document.querySelector('#editModeToggle ~ div .dot').style.transform = isEditMode ? 'translateX(1.5rem)' : 'translateX(0)';
+            const dot = document.getElementById('editModeDot');
+            if (dot) {
+                dot.style.transform = isEditMode ? 'translateX(1.5rem)' : 'translateX(0)';
+            }
             
             document.querySelectorAll('.draggable, .draggable-section').forEach(el => el.setAttribute('draggable', isEditMode));
             document.querySelectorAll('.drag-handle').forEach(el => el.style.cursor = isEditMode ? 'move' : 'default');
@@ -594,7 +599,11 @@
 
             } catch (error) {
                 console.error("Gemini API Error:", error);
-                showNotification("AI failed to generate ideas. Please try again.", 'error');
+                let errorMessage = "AI failed to generate ideas. Please try again.";
+                if (error.message.includes("403")) {
+                    errorMessage = "AI generation failed (403 Forbidden). This may be an API key issue.";
+                }
+                showNotification(errorMessage, 'error');
             } finally {
                 generateBtn.disabled = false;
                 generateBtn.innerHTML = 'Generate';
@@ -735,4 +744,5 @@
 
 </body>
 </html>
+
 
