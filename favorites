@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customizable Soundboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --background-color: #1f2937; /* gray-800 */
+            --container-bg: #374151; /* gray-700 */
+            --button-bg: #4b5563; /* gray-600 */
+            --button-hover-bg: #6b7280; /* gray-500 */
+            --text-color: #f9fafb; /* gray-50 */
+            --border-color: #4b5563; /* gray-600 */
+            --accent-color: #3b82f6; /* blue-500 */
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+        }
+        .sound-btn {
+            transition: background-color 0.2s, transform 0.1s;
+            touch-action: manipulation; /* Improves touch responsiveness */
+        }
+        .sound-btn:active {
+            transform: scale(0.95);
+        }
+        .draggable {
+            cursor: move;
+        }
+        .dragging {
+            opacity: 0.5;
+            background: var(--button-hover-bg);
+            border: 2px dashed var(--accent-color);
+        }
+        .drag-over {
+            border: 2px dashed var(--accent-color) !important;
+            transform: scale(1.02);
+        }
+        .edit-mode .edit-controls {
+            display: flex;
+        }
+        .edit-mode .sound-btn-content {
+            pointer-events: none;
+        }
+        .modal-backdrop {
+            background-color: rgba(0,0,0,0.7);
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--background-color);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--button-bg);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--button-hover-bg);
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="antialiased">
+
+    <!-- Main Container -->
+    <div class="container mx-auto p-4 md:p-6 max-w-7xl">
+
+        <!-- Header -->
+        <header class="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 mb-6 sticky top-4 z-20 border border-gray-700">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <h1 class="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+                    <i class="fas fa-compact-disc text-blue-400"></i> My Soundboard
+                </h1>
+                <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2">
+                    <div class="relative w-full sm:w-64">
+                        <input type="text" id="searchInput" placeholder="Search sounds..." class="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <i class="fas fa-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                     <label for="editModeToggle" class="flex items-center cursor-pointer select-none">
+                        <span class="mr-2 text-sm font-medium">Edit Mode</span>
+                        <div class="relative">
+                            <input type="checkbox" id="editModeToggle" class="sr-only">
+                            <div class="block bg-gray-600 w-12 h-6 rounded-full"></div>
+                            <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+             <div id="edit-actions" class="hidden flex-wrap items-center justify-center sm:justify-start gap-2 mt-4 pt-4 border-t border-gray-700">
+                <button id="addSectionBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-plus"></i> Add Section</button>
+                <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-file-export"></i> Export</button>
+                <button onclick="document.getElementById('importInput').click()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-file-import"></i> Import</button>
+                <input type="file" id="importInput" class="hidden" accept=".json">
+            </div>
+        </header>
+
+        <!-- Soundboard Grid -->
+        <main id="soundboard" class="space-y-8">
+            <!-- Sections and sounds will be dynamically inserted here -->
+        </main>
+        
+        <!-- Welcome/Empty State -->
+        <div id="empty-state" class="hidden text-center p-10 bg-gray-800 rounded-lg border-2 border-dashed border-gray-700">
+            <h2 class="text-2xl font-bold mb-2">Welcome to your soundboard!</h2>
+            <p class="text-gray-400 mb-4">It looks a bit empty here. Turn on "Edit Mode" to add your first section and sounds.</p>
+            <i class="fas fa-hand-pointer fa-2x text-blue-400 animate-bounce"></i>
+        </div>
+
+    </div>
+
+    <!-- Modal for Add/Edit -->
+    <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-md m-4 border border-gray-700">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-4">Modal Title</h2>
+            <form id="modalForm">
+                <input type="hidden" id="editId">
+                <input type="hidden" id="editType">
+                <input type="hidden" id="editSectionId">
+                <div id="form-group-name" class="mb-4">
+                    <label for="itemName" class="block text-sm font-medium text-gray-300 mb-1">Name</label>
+                    <input type="text" id="itemName" class="w-full bg-gray-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div id="form-group-url" class="mb-4">
+                    <label for="itemUrl" class="block text-sm font-medium text-gray-300 mb-1">Audio URL</label>
+                    <input type="url" id="itemUrl" class="w-full bg-gray-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://example.com/sound.mp3" required>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" id="cancelBtn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const soundboard = document.getElementById('soundboard');
+        const searchInput = document.getElementById('searchInput');
+        const editModeToggle = document.getElementById('editModeToggle');
+        const modal = document.getElementById('modal');
+        const modalForm = document.getElementById('modalForm');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const addSectionBtn = document.getElementById('addSectionBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const importInput = document.getElementById('importInput');
+        
+        let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let currentAudioSource = null;
+
+        const initialData = [
+            {
+                id: `section-${Date.now()}`,
+                title: 'Imported From Myinstants',
+                sounds: [
+                    { id: `sound-${Date.now() + 1}`, name: 'Vine Boom', url: 'https://www.myinstants.com/media/sounds/vine-boom.mp3' },
+                    { id: `sound-${Date.now() + 2}`, name: 'Wii Sports', url: 'https://www.myinstants.com/media/sounds/Wii-Sports-OST.mp3' },
+                    { id: `sound-${Date.now() + 3}`, name: 'Taco Bell Bong', url: 'https://www.myinstants.com/media/sounds/taco-bell-bong-sfx.mp3' },
+                    { id: `sound-${Date.now() + 4}`, name: 'MGS Alert', url: 'https://www.myinstants.com/media/sounds/metal-gear-solid-alert-sound.mp3' },
+                    { id: `sound-${Date.now() + 5}`, name: 'Leeroy Jenkins', url: 'https://www.myinstants.com/media/sounds/leeroy-jenkins.mp3' },
+                    { id: `sound-${Date.now() + 6}`, name: 'Sad Trombone', url: 'https://www.myinstants.com/media/sounds/sad-trombone.mp3' },
+                    { id: `sound-${Date.now() + 7}`, name: 'Roblox OOF', url: 'https://www.myinstants.com/media/sounds/roblox-death-sound_1.mp3' },
+                    { id: `sound-${Date.now() + 8}`, name: 'Correct Answer', url: 'https://www.myinstants.com/media/sounds/correct_f-r95-3k.mp3' },
+                    { id: `sound-${Date.now() + 9}`, name: 'Wrong Answer', url: 'https://www.myinstants.com/media/sounds/wrong-answer-sound-effect.mp3' },
+                    { id: `sound-${Date.now() + 10}`, name: 'DUN DUN', url: 'https://www.myinstants.com/media/sounds/dun-dun-1.mp3' },
+                    { id: `sound-${Date.now() + 11}`, name: 'Heheha', url: 'https://www.myinstants.com/media/sounds/he-he-he-ha.mp3' },
+                    { id: `sound-${Date.now() + 12}`, name: 'Directed by Robert B', url: 'https://www.myinstants.com/media/sounds/directed-by-robert-b-weide.mp3' },
+                    { id: `sound-${Date.now() + 13}`, name: 'Emotional Damage', url: 'https://www.myinstants.com/media/sounds/emotional-damage-meme.mp3' },
+                    { id: `sound-${Date.now() + 14}`, name: 'Curb Your Enthusiasm', url: 'https://www.myinstants.com/media/sounds/curb-your-enthusiasm-theme-song.mp3' },
+                    { id: `sound-${Date.now() + 15}`, name: 'Oh no no no', url: 'https://www.myinstants.com/media/sounds/oh-no-no-no-no-laugh.mp3' },
+                    { id: `sound-${Date.now() + 16}`, name: 'What the dog doin', url: 'https://www.myinstants.com/media/sounds/what-the-dog-doin.mp3' },
+                    { id: `sound-${Date.now() + 17}`, name: 'Ankara Messi', url: 'https://www.myinstants.com/media/sounds/ankara-messi_5.mp3' },
+                    { id: `sound-${Date.now() + 18}`, name: 'Windows XP Shutdown', url: 'https://www.myinstants.com/media/sounds/windows-xp-shutdown.mp3' },
+                    { id: `sound-${Date.now() + 19}`, name: 'Bonk', url: 'https://www.myinstants.com/media/sounds/bonk-sound-effect.mp3' },
+                    { id: `sound-${Date.now() + 20}`, name: 'Minecraft Eating', url: 'https://www.myinstants.com/media/sounds/minecraft-eating-sound-effect-hd.mp3' },
+                    { id: `sound-${Date.now() + 21}`, name: 'Bruh', url: 'https://www.myinstants.com/media/sounds/movie_1.mp3' },
+                    { id: `sound-${Date.now() + 22}`, name: 'They ask you', url: 'https://www.myinstants.com/media/sounds/they-ask-you-how-you-are-and-you-just-have-to-say-that-youre-fine-sound-effect_1.mp3' },
+                    { id: `sound-${Date.now() + 23}`, name: 'Among Us', url: 'https://www.myinstants.com/media/sounds/among-us-role-reveal-sound.mp3' },
+                    { id: `sound-${Date.now() + 24}`, name: 'Record Scratch', url: 'https://www.myinstants.com/media/sounds/record-scratch-sound-effect.mp3' },
+                    { id: `sound-${Date.now() + 25}`, name: 'Get over here', url: 'https://www.myinstants.com/media/sounds/get-over-here_2.mp3' },
+                    { id: `sound-${Date.now() + 26}`, name: 'Nope', url: 'https://www.myinstants.com/media/sounds/nope.mp3' },
+                    { id: `sound-${Date.now() + 27}`, name: 'Fart with reverb', url: 'https://www.myinstants.com/media/sounds/reverb-fart-sound-effect.mp3' },
+                    { id: `sound-${Date.now() + 28}`, name: 'Gta san andreas', url: 'https://www.myinstants.com/media/sounds/gta-san-andreas-sound-effect.mp3' },
+                    { id: `sound-${Date.now() + 29}`, name: 'Nani', url: 'https://www.myinstants.com/media/sounds/omae-wa-mou-shindeiru-nani-sfx.mp3' },
+  { id: `sound-${Date.now() + 30}`, name: 'Run', url: 'https://www.myinstants.com/media/sounds/run-vine-sound-effect.mp3' },
+  { id: `sound-${Date.now() + 31}`, name: 'EA Sports', url: 'https://www.myinstants.com/media/sounds/ea-sports-its-in-the-game-1.mp3' },
+  { id: `sound-${Date.now() + 32}`, name: 'Damn son', url: 'https://www.myinstants.com/media/sounds/damn-son-whered-you-find-this-sound-effect_1.mp3' },
+  { id: `sound-${Date.now() + 33}`, name: 'Yeah boy', url: 'https://www.myinstants.com/media/sounds/yeah-boy.mp3' },
+  { id: `sound-${Date.now() + 34}`, name: 'THX', url: 'https://www.myinstants.com/media/sounds/thx-sound-effect_1.mp3' },
+  { id: `sound-${Date.now() + 35}`, name: 'Finish Him', url: 'https://www.myinstants.com/media/sounds/finish-him-soun-effect.mp3' },
+  { id: `sound-${Date.now() + 36}`, name: 'Why are you running', url: 'https://www.myinstants.com/media/sounds/why-are-you-running-meme-sound-effect.mp3' },
+  { id: `sound-${Date.now() + 37}`, name: 'Spongebob fail', url: 'https://www.myinstants.com/media/sounds/spongebob-fail.mp3' },
+  { id: `sound-${Date.now() + 38}`, name: 'Awkward cricket', url: 'https://www.myinstants.com/media/sounds/cricket-sound.mp3' },
+  { id: `sound-${Date.now() + 39}`, name: 'Are you comedy me', url: 'https://www.myinstants.com/media/sounds/are-you-comedy-me-deep-voice-sound-effect.mp3' },
+  { id: `sound-${Date.now() + 40}`, name: 'Wow', url: 'https://www.myinstants.com/media/sounds/wow-sound-effect.mp3' },
+  { id: `sound-${Date.now() + 41}`, name: 'Hello there', url: 'https://www.myinstants.com/media/sounds/hello-there-sound-effect.mp3' },
+  { id: `sound-${Date.now() + 42}`, name: 'Hitmarker', url: 'https://www.myinstants.com/media/sounds/hitmarker_2.mp3' },
+  { id: `sound-${Date.now() + 43}`, name: 'I love refrigerators', url: 'https://www.myinstants.com/media/sounds/i-love-refrigerators.mp3' },
+  { id: `sound-${Date.now() + 44}`, name: 'Ba dum tss', url: 'https://www.myinstants.com/media/sounds/badumtss.mp3' },
+  { id: `sound-${Date.now() + 45}`, name: 'Is that the bite of 87', url: 'https://www.myinstants.com/media/sounds/was-that-the-bite-of-87.mp3' },
+  { id: `sound-${Date.now() + 46}`, name: 'This is sparta', url: 'https://www.myinstants.com/media/sounds/this-is-sparta-king-leonidas.mp3' },
+  { id: `sound-${Date.now() + 47}`, name: 'No god please no', url: 'https://www.myinstants.com/media/sounds/no-god-please-no-noooooooooo.mp3' },
+  { id: `sound-${Date.now() + 48}`, name: 'Siuuu', url: 'https://www.myinstants.com/media/sounds/siuuuu.mp3' },
+  { id: `sound-${Date.now() + 49}`, name: 'What a save', url: 'https://www.myinstants.com/media/sounds/what-a-save-x3.mp3' },
+  { id: `sound-${Date.now() + 50}`, name: 'John Cena', url: 'https://www.myinstants.com/media/sounds/and-his-name-is-john-cena-1.mp3' },
+  { id: `sound-${Date.now() + 51}`, name: 'Bazinga', url: 'https://www.myinstants.com/media/sounds/bazinga.mp3' },
+  { id: `sound-${Date.now() + 52}`, name: 'Wasted', url: 'https://www.myinstants.com/media/sounds/gta-v-wasted-sound-effect-hd.mp3' },
+  { id: `sound-${Date.now() + 53}`, name: 'Toasty', url: 'https://www.myinstants.com/media/sounds/toasty-soun-effect.mp3' },
+  { id: `sound-${Date.now() + 54}`, name: 'My name is Jeff', url: 'https://www.myinstants.com/media/sounds/my-name-is-jeff.mp3' },
+  { id: `sound-${Date.now() + 55}`, name: 'It is what it is', url: 'https://www.myinstants.com/media/sounds/it-is-what-it-is-meme.mp3' },
+  { id: `sound-${Date.now() + 56}`, name: 'Wait a minute', url: 'https://www.myinstants.com/media/sounds/wait-a-minute-who-are-you-meme-sound-effect.mp3' },
+  { id: `sound-${Date.now() + 57}`, name: 'I like ya cut g', url: 'https://www.myinstants.com/media/sounds/i-like-ya-cut-g-scream.mp3' },
+  { id: `sound-${Date.now() + 58}`, name: 'Fatality', url: 'https://www.myinstants.com/media/sounds/fatality-soun-effect.mp3' },
+  { id: `sound-${Date.now() + 59}`, name: 'Oh my god', url: 'https://www.myinstants.com/media/sounds/oh-my-god-meme-sound-effect.mp3' },
+  { id: `sound-${Date.now() + 60}`, name: 'Noice', url: 'https://www.myinstants.com/media/sounds/noice.mp3' },
+  { id: `sound-${Date.now() + 61}`, name: 'Air Horn', url: 'https://www.myinstants.com/media/sounds/mlg-airhorn.mp3' },
+  { id: `sound-${Date.now() + 62}`, name: 'FUS RO DAH', url: 'https://www.myinstants.com/media/sounds/fus-ro-dah.mp3' },
+  { id: `sound-${Date.now() + 63}`, name: 'Omae wa mou', url: 'https://www.myinstants.com/media/sounds/omae-wa-mou-shindeiru.mp3' },
+  { id: `sound-${Date.now() + 64}`, name: 'It s a trap', url: 'https://www.myinstants.com/media/sounds/its-a-trap.mp3' },
+  { id: `sound-${Date.now() + 65}`, name: 'Illuminati', url: 'https://www.myinstants.com/media/sounds/illuminati-confirmed.mp3' },
+  { id: `sound-${Date.now() + 66}`, name: 'What the hell', url: 'https://www.myinstants.com/media/sounds/what-the-hell-oh-my-god-no-way.mp3' },
+  { id: `sound-${Date.now() + 67}`, name: 'Get stick bugged lol', url: 'https://www.myinstants.com/media/sounds/get-stick-bugged-lol.mp3' },
+  { id: `sound-${Date.now() + 68}`, name: 'Mission failed', url: 'https://www.myinstants.com/media/sounds/mission-failed-we-will-get-em-next-time.mp3' },
+  { id: `sound-${Date.now() + 69}`, name: 'Ayo the pizza here', url: 'https://www.myinstants.com/media/sounds/oh-ayo-the-pizza-here-sound-effect.mp3' },
+  { id: `sound-${Date.now() + 70}`, name: 'Deja vu', url: 'https://www.myinstants.com/media/sounds/dejavu.mp3' },
+  { id: `sound-${Date.now() + 71}`, name: 'You shall not pass', url: 'https://www.myinstants.com/media/sounds/you-shall-not-pass_1.mp3' },
+  { id: `sound-${Date.now() + 72}`, name: '2000 years later', url: 'https://www.myinstants.com/media/sounds/2000-years-later.mp3' },
+  { id: `sound-${Date.now() + 73}`, name: 'Do it', url: 'https://www.myinstants.com/media/sounds/do-it.mp3' },
+  { id: `sound-${Date.now() + 74}`, name: 'That was easy', url: 'https://www.myinstants.com/media/sounds/that-was-easy.mp3' },
+  { id: `sound-${Date.now() + 75}`, name: 'Nice', url: 'https://www.myinstants.com/media/sounds/nice.mp3' },
+  { id: `sound-${Date.now() + 76}`, name: 'Its over 9000', url: 'https://www.myinstants.com/media/sounds/over9000-sound-effect.mp3' },
+  { id: `sound-${Date.now() + 77}`, name: 'Headshot', url: 'https://www.myinstants.com/media/sounds/headshot-soun-effect.mp3' },
+  { id: `sound-${Date.now() + 78}`, name: 'Not bad', url: 'https://www.myinstants.com/media/sounds/not-bad.mp3' },
+  { id: `sound-${Date.now() + 79}`, name: 'Hallelujah', url: 'https://www.myinstants.com/media/sounds/hallelujah-chorus.mp3' },
+  { id: `sound-${Date.now() + 80}`, name: 'Hey hey heyyy', url: 'https://www.myinstants.com/media/sounds/bitconnect.mp3' },
+  { id: `sound-${Date.now() + 81}`, name: 'My disappointment', url: 'https://www.myinstants.com/media/sounds/my-disappointment-is-immeasurable-and-my-day-is-ruined.mp3' },
+  { id: `sound-${Date.now() + 82}`, name: 'I am the one', url: 'https://www.myinstants.com/media/sounds/say-my-name-i-am-the-one-who-knocks.mp3' },
+  { id: `sound-${Date.now() + 83}`, name: 'Stop it get some help', url: 'https://www.myinstants.com/media/sounds/stop-it-get-some-help.mp3' },
+  { id: `sound-${Date.now() + 84}`, name: 'Awww', url: 'https://www.myinstants.com/media/sounds/awww-sound-effect.mp3' },
+  { id: `sound-${Date.now() + 85}`, name: 'Earrape bass', url: 'https://www.myinstants.com/media/sounds/earrape-bass.mp3' },
+  { id: `sound-${Date.now() + 86}`, name: 'Oh baby a triple', url: 'https://www.myinstants.com/media/sounds/oh-baby-a-triple.mp3' },
+  { id: `sound-${Date.now() + 87}`, name: 'MOM GET THE CAMERA', url: 'https://www.myinstants.com/media/sounds/mom-get-the-camera.mp3' },
+  { id: `sound-${Date.now() + 88}`, name: 'You want to explode', url: 'https://www.myinstants.com/media/sounds/do-you-want-to-explode_2.mp3' },
+  { id: `sound-${Date.now() + 89}`, name: 'Are you serious', url: 'https://www.myinstants.com/media/sounds/are-you-serious.mp3' },
+  { id: `sound-${Date.now() + 90}`, name: 'Well be right back', url: 'https://www.myinstants.com/media/sounds/we-ll-be-right-back.mp3' },
+  { id: `sound-${Date.now() + 91}`, name: 'Wombo combo', url: 'https://www.myinstants.com/media/sounds/wombo-combo-soun-effect_1.mp3' }
+                ]
+            }
+        ];
+
+        let soundData = [];
+
+        // --- Core Functions ---
+
+        function loadData() {
+            const savedData = localStorage.getItem('soundboardData');
+            soundData = savedData ? JSON.parse(savedData) : initialData;
+            renderSoundboard();
+        }
+
+        function saveData() {
+            localStorage.setItem('soundboardData', JSON.stringify(soundData));
+        }
+
+        function playSound(url) {
+            if (currentAudioSource) {
+                try {
+                    currentAudioSource.stop();
+                } catch (e) {
+                    console.warn("Could not stop previous audio source.", e);
+                }
+            }
+            if (!audioContext) {
+                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            fetch(url)
+                .then(response => {
+                     if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+                .then(audioBuffer => {
+                    const source = audioContext.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(audioContext.destination);
+                    source.start(0);
+                    currentAudioSource = source;
+                }).catch(e => {
+                    alert(`Error playing sound: Could not fetch or decode audio from URL.\n\nDetails: ${e.message}`);
+                    console.error('Error with audio playback:', e);
+                });
+        }
+
+        // --- Rendering ---
+        
+        function renderSoundboard(filteredData = null) {
+            const dataToRender = filteredData || soundData;
+            soundboard.innerHTML = '';
+
+            if (dataToRender.length === 0 && !filteredData) {
+                document.getElementById('empty-state').style.display = 'block';
+            } else {
+                 document.getElementById('empty-state').style.display = 'none';
+            }
+
+            dataToRender.forEach(section => {
+                const sectionEl = document.createElement('section');
+                sectionEl.className = 'bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700 draggable-section';
+                sectionEl.dataset.id = section.id;
+                sectionEl.setAttribute('draggable', 'true');
+
+                sectionEl.innerHTML = `
+                    <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-700">
+                        <h2 class="text-xl font-bold truncate" data-id="${section.id}">${section.title}</h2>
+                        <div class="edit-controls hidden items-center gap-2">
+                            <button class="add-sound-btn text-gray-300 hover:text-white" data-section-id="${section.id}" title="Add Sound"><i class="fas fa-plus-circle"></i></button>
+                            <button class="edit-item-btn text-gray-300 hover:text-white" data-type="section" data-id="${section.id}" title="Edit Section"><i class="fas fa-pencil-alt"></i></button>
+                            <button class="delete-item-btn text-red-500 hover:text-red-400" data-type="section" data-id="${section.id}" title="Delete Section"><i class="fas fa-trash"></i></button>
+                            <span class="drag-handle text-gray-400 cursor-move" title="Drag Section"><i class="fas fa-grip-vertical"></i></span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sound-container">
+                        <!-- Sound buttons here -->
+                    </div>
+                `;
+
+                const soundContainer = sectionEl.querySelector('.sound-container');
+                section.sounds.forEach(sound => {
+                    const soundBtn = document.createElement('button');
+                    soundBtn.className = 'sound-btn bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-2 rounded-lg shadow-md flex flex-col items-center justify-center text-center aspect-square draggable';
+                    soundBtn.dataset.url = sound.url;
+                    soundBtn.dataset.id = sound.id;
+                    soundBtn.dataset.sectionId = section.id;
+                    soundBtn.setAttribute('draggable', 'true');
+
+                    soundBtn.innerHTML = `
+                        <div class="sound-btn-content flex flex-col items-center justify-center gap-2">
+                            <i class="fas fa-music text-2xl text-blue-300"></i>
+                            <span class="text-sm break-all">${sound.name}</span>
+                        </div>
+                        <div class="edit-controls hidden absolute top-1 right-1 bg-gray-800/80 rounded-full p-1 items-center gap-1 text-xs">
+                            <span class="edit-item-btn text-gray-300 hover:text-white" data-type="sound" data-id="${sound.id}" data-section-id="${section.id}" title="Edit Sound"><i class="fas fa-pencil-alt"></i></span>
+                            <span class="delete-item-btn text-red-500 hover:text-red-400" data-type="sound" data-id="${sound.id}" data-section-id="${section.id}" title="Delete Sound"><i class="fas fa-trash"></i></span>
+                        </div>
+                    `;
+                    soundContainer.appendChild(soundBtn);
+                });
+                soundboard.appendChild(sectionEl);
+            });
+            updateEditMode();
+        }
+
+        // --- Event Handlers ---
+
+        soundboard.addEventListener('click', (e) => {
+            if (document.body.classList.contains('edit-mode')) {
+                // Handle edit/delete/add clicks
+                const target = e.target.closest('button, span');
+                if (!target) return;
+                
+                if (target.classList.contains('add-sound-btn')) {
+                    openModal('sound', 'add', { sectionId: target.dataset.sectionId });
+                } else if (target.classList.contains('edit-item-btn')) {
+                    const { type, id, sectionId } = target.dataset;
+                    openModal(type, 'edit', { id, sectionId });
+                } else if (target.classList.contains('delete-item-btn')) {
+                    const { type, id, sectionId } = target.dataset;
+                    if (confirm(`Are you sure you want to delete this ${type}?`)) {
+                        deleteItem(type, id, sectionId);
+                    }
+                }
+            } else {
+                // Handle sound playback
+                const soundBtn = e.target.closest('.sound-btn');
+                if (soundBtn) {
+                    playSound(soundBtn.dataset.url);
+                }
+            }
+        });
+        
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            if (!searchTerm) {
+                renderSoundboard();
+                return;
+            }
+            const filteredData = JSON.parse(JSON.stringify(soundData));
+            const finalData = filteredData.map(section => {
+                section.sounds = section.sounds.filter(sound => sound.name.toLowerCase().includes(searchTerm));
+                return section;
+            }).filter(section => section.sounds.length > 0);
+
+            renderSoundboard(finalData);
+        });
+
+        editModeToggle.addEventListener('change', () => {
+            document.body.classList.toggle('edit-mode');
+            updateEditMode();
+        });
+        
+        function updateEditMode() {
+            const isEditMode = document.body.classList.contains('edit-mode');
+            const editActions = document.getElementById('edit-actions');
+            const toggleDot = editModeToggle.nextElementSibling.querySelector('.dot');
+
+            if (isEditMode) {
+                editActions.style.display = 'flex';
+                toggleDot.style.transform = 'translateX(1.5rem)';
+            } else {
+                editActions.style.display = 'none';
+                toggleDot.style.transform = 'translateX(0)';
+            }
+            
+            document.querySelectorAll('.draggable, .draggable-section').forEach(el => {
+                el.setAttribute('draggable', isEditMode);
+            });
+             document.querySelectorAll('.drag-handle').forEach(el => {
+                el.style.cursor = isEditMode ? 'move' : 'default';
+            });
+        }
+
+        // --- Modal Logic ---
+
+        function openModal(type, mode, data) {
+            modalForm.reset();
+            const { id, sectionId } = data;
+            document.getElementById('editId').value = id || '';
+            document.getElementById('editType').value = type;
+            document.getElementById('editSectionId').value = sectionId || '';
+
+            const modalTitle = document.getElementById('modalTitle');
+            const nameGroup = document.getElementById('form-group-name');
+            const urlGroup = document.getElementById('form-group-url');
+            
+            if (type === 'section') {
+                urlGroup.style.display = 'none';
+                modalTitle.textContent = mode === 'add' ? 'Add New Section' : 'Edit Section';
+                if (mode === 'edit') {
+                    const section = soundData.find(s => s.id === id);
+                    document.getElementById('itemName').value = section.title;
+                }
+            } else { // type === 'sound'
+                urlGroup.style.display = 'block';
+                modalTitle.textContent = mode === 'add' ? 'Add New Sound' : 'Edit Sound';
+                 if (mode === 'edit') {
+                    const section = soundData.find(s => s.id === sectionId);
+                    const sound = section.sounds.find(snd => snd.id === id);
+                    document.getElementById('itemName').value = sound.name;
+                    document.getElementById('itemUrl').value = sound.url;
+                }
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+        }
+
+        modalForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const type = document.getElementById('editType').value;
+            const sectionId = document.getElementById('editSectionId').value;
+            const name = document.getElementById('itemName').value;
+            const url = document.getElementById('itemUrl').value;
+
+            if (type === 'section') {
+                if (id) { // Edit
+                    const section = soundData.find(s => s.id === id);
+                    section.title = name;
+                } else { // Add
+                    soundData.push({ id: `section-${Date.now()}`, title: name, sounds: [] });
+                }
+            } else { // type === 'sound'
+                const section = soundData.find(s => s.id === sectionId);
+                if (id) { // Edit
+                    const sound = section.sounds.find(snd => snd.id === id);
+                    sound.name = name;
+                    sound.url = url;
+                } else { // Add
+                    section.sounds.push({ id: `sound-${Date.now()}`, name, url });
+                }
+            }
+            saveData();
+            renderSoundboard();
+            closeModal();
+        });
+
+        cancelBtn.addEventListener('click', closeModal);
+        addSectionBtn.addEventListener('click', () => openModal('section', 'add', {}));
+
+        // --- CRUD operations ---
+        function deleteItem(type, id, sectionId) {
+            if (type === 'section') {
+                soundData = soundData.filter(s => s.id !== id);
+            } else { // sound
+                const section = soundData.find(s => s.id === sectionId);
+                section.sounds = section.sounds.filter(snd => snd.id !== id);
+            }
+            saveData();
+            renderSoundboard();
+        }
+        
+        // --- Drag and Drop ---
+        let draggedItem = null;
+
+        soundboard.addEventListener('dragstart', (e) => {
+            if (!document.body.classList.contains('edit-mode')) {
+                e.preventDefault();
+                return;
+            }
+            draggedItem = e.target;
+            setTimeout(() => {
+                e.target.classList.add('dragging');
+            }, 0);
+        });
+
+        soundboard.addEventListener('dragend', (e) => {
+            draggedItem.classList.remove('dragging');
+            draggedItem = null;
+        });
+
+        soundboard.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('.draggable, .draggable-section, .sound-container');
+            if (target && draggedItem) {
+                 document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+                 
+                 if (draggedItem.classList.contains('draggable-section') && target.closest('.draggable-section')) {
+                     target.closest('.draggable-section').classList.add('drag-over');
+                 } else if (draggedItem.classList.contains('draggable') && (target.closest('.draggable') || target.closest('.sound-container'))) {
+                     target.classList.add('drag-over');
+                 }
+            }
+        });
+
+        soundboard.addEventListener('dragleave', e => {
+            e.target.closest('.drag-over')?.classList.remove('drag-over');
+        });
+
+        soundboard.addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            if (!draggedItem) return;
+
+            const isSectionDrag = draggedItem.classList.contains('draggable-section');
+            const target = e.target.closest(isSectionDrag ? '.draggable-section' : '.draggable, .sound-container');
+            if (!target) return;
+
+            // Reorder sections
+            if (isSectionDrag) {
+                const targetSectionEl = target.closest('.draggable-section');
+                if (!targetSectionEl || targetSectionEl === draggedItem) return;
+
+                const fromIndex = soundData.findIndex(s => s.id === draggedItem.dataset.id);
+                const toIndex = soundData.findIndex(s => s.id === targetSectionEl.dataset.id);
+                
+                const [movedSection] = soundData.splice(fromIndex, 1);
+                soundData.splice(toIndex, 0, movedSection);
+            } 
+            // Reorder sounds
+            else {
+                const fromSectionId = draggedItem.dataset.sectionId;
+                const fromSoundId = draggedItem.dataset.id;
+                const fromSection = soundData.find(s => s.id === fromSectionId);
+                const fromSoundIndex = fromSection.sounds.findIndex(s => s.id === fromSoundId);
+
+                const toSectionEl = target.closest('.draggable-section');
+                const toSectionId = toSectionEl.dataset.id;
+                const toSection = soundData.find(s => s.id === toSectionId);
+                
+                let toSoundIndex = toSection.sounds.length; // Default to end of list
+                const toSoundEl = target.closest('.draggable');
+                if(toSoundEl) {
+                    toSoundIndex = toSection.sounds.findIndex(s => s.id === toSoundEl.dataset.id);
+                }
+
+                const [movedSound] = fromSection.sounds.splice(fromSoundIndex, 1);
+                toSection.sounds.splice(toSoundIndex, 0, movedSound);
+            }
+
+            saveData();
+            renderSoundboard();
+        });
+        
+        // --- Import / Export ---
+        exportBtn.addEventListener('click', () => {
+            const dataStr = JSON.stringify(soundData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'my-soundboard.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        importInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+                    // Basic validation
+                    if (Array.isArray(importedData) && importedData.every(s => s.id && s.title && Array.isArray(s.sounds))) {
+                        if(confirm('This will replace your current soundboard. Are you sure?')) {
+                            soundData = importedData;
+                            saveData();
+                            renderSoundboard();
+                        }
+                    } else {
+                        alert('Invalid soundboard file format.');
+                    }
+                } catch (error) {
+                    alert('Error parsing JSON file.');
+                    console.error('Import error:', error);
+                } finally {
+                    // Reset input so the same file can be loaded again
+                    importInput.value = '';
+                }
+            };
+            reader.readAsText(file);
+        });
+        
+        // --- Initialize ---
+        loadData();
+    });
+    </script>
+
+</body>
+</html>
+
+
