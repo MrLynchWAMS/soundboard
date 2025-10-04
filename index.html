@@ -87,9 +87,9 @@
         <header class="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 mb-6 sticky top-4 z-20 border border-gray-700/50">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div class="flex items-center gap-3">
-                    <i class="fas fa-compact-disc text-blue-400 text-2xl md:text-3xl"></i>
+                    <i id="board-icon" class="fas fa-compact-disc text-blue-400 text-2xl md:text-3xl"></i>
                     <h1 id="board-title" class="text-2xl md:text-3xl font-bold text-white">My Soundboard</h1>
-                    <input type="text" id="board-title-input" class="hidden text-2xl md:text-3xl font-bold bg-transparent border-b-2 border-blue-500 focus:outline-none">
+                    <input type="text" id="board-title-input" class="hidden text-2xl md:text-3xl font-bold bg-transparent border-b-2 border-blue-500 focus:outline-none w-full sm:w-auto">
                 </div>
                 <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
                     <div class="relative w-full sm:w-64">
@@ -141,7 +141,7 @@
                 <input type="hidden" id="editId"><input type="hidden" id="editType"><input type="hidden" id="editSectionId">
                 <div id="form-group-name" class="mb-4">
                     <label for="itemName" class="block text-sm font-medium text-text-secondary mb-1">Name</label>
-                    <input type="text" id="itemName" class="w-full bg-gray-900/50 border border-border-color text-text-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-color">
+                    <input type="text" id="itemName" class="w-full bg-gray-900/50 border border-border-color text-text-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-color" required>
                 </div>
                 <div id="form-group-bulk-color" class="mb-4">
                      <label for="itemBulkColor" class="block text-sm font-medium text-text-secondary mb-1">Set All Button Colors</label>
@@ -149,7 +149,7 @@
                 </div>
                 <div id="form-group-url" class="mb-4">
                     <label for="itemUrl" class="block text-sm font-medium text-text-secondary mb-1">Audio URL</label>
-                    <input type="text" id="itemUrl" class="w-full bg-gray-900/50 border border-border-color text-text-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-color" placeholder="https://example.com/sound.mp3">
+                    <input type="text" id="itemUrl" class="w-full bg-gray-900/50 border border-border-color text-text-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-color" placeholder="https://example.com/sound.mp3" required>
                 </div>
                  <div id="form-group-width" class="mb-4">
                     <label for="itemWidth" class="block text-sm font-medium text-text-secondary mb-1">Section Width</label>
@@ -176,28 +176,28 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div class="flex flex-col">
                             <label for="bgColor" class="text-sm font-medium text-text-secondary mb-1">Background</label>
-                            <input type="color" id="bgColor" data-css-var="--background-color" class="w-full h-10 p-0 border-0 cursor-pointer">
+                            <input type="color" id="bgColor" data-css-var="--background-color" class="w-full h-10 p-0 border-0 cursor-pointer rounded-lg">
                         </div>
                         <div class="flex flex-col">
                             <label for="surfaceColor" class="text-sm font-medium text-text-secondary mb-1">Surface</label>
-                            <input type="color" id="surfaceColor" data-css-var="--surface-color" class="w-full h-10 p-0 border-0 cursor-pointer">
+                            <input type="color" id="surfaceColor" data-css-var="--surface-color" class="w-full h-10 p-0 border-0 cursor-pointer rounded-lg">
                         </div>
                         <div class="flex flex-col">
                             <label for="primaryColor" class="text-sm font-medium text-text-secondary mb-1">Primary</label>
-                            <input type="color" id="primaryColor" data-css-var="--primary-color" class="w-full h-10 p-0 border-0 cursor-pointer">
+                            <input type="color" id="primaryColor" data-css-var="--primary-color" class="w-full h-10 p-0 border-0 cursor-pointer rounded-lg">
                         </div>
                         <div class="flex flex-col">
                             <label for="textColor" class="text-sm font-medium text-text-secondary mb-1">Text</label>
-                            <input type="color" id="textColor" data-css-var="--text-primary" class="w-full h-10 p-0 border-0 cursor-pointer">
+                            <input type="color" id="textColor" data-css-var="--text-primary" class="w-full h-10 p-0 border-0 cursor-pointer rounded-lg">
                         </div>
                     </div>
                 </div>
                 <div>
                     <h3 class="text-lg font-medium mb-3">Button Shape</h3>
                     <div class="flex justify-around bg-gray-900/50 p-1 rounded-lg">
-                        <label class="px-4 py-2 text-sm rounded-md cursor-pointer transition"><input type="radio" name="buttonShape" value="rounded-lg" class="sr-only"> Sharp</label>
-                        <label class="px-4 py-2 text-sm rounded-md cursor-pointer transition"><input type="radio" name="buttonShape" value="rounded-2xl" class="sr-only"> Rounded</label>
-                        <label class="px-4 py-2 text-sm rounded-md cursor-pointer transition"><input type="radio" name="buttonShape" value="rounded-full" class="sr-only"> Pill</label>
+                        <label class="px-4 py-2 text-sm rounded-md cursor-pointer transition w-full text-center"><input type="radio" name="buttonShape" value="rounded-none" class="sr-only"> Sharp</label>
+                        <label class="px-4 py-2 text-sm rounded-md cursor-pointer transition w-full text-center"><input type="radio" name="buttonShape" value="rounded-xl" class="sr-only"> Rounded</label>
+                        <label class="px-4 py-2 text-sm rounded-md cursor-pointer transition w-full text-center"><input type="radio" name="buttonShape" value="rounded-full" class="sr-only"> Pill</label>
                     </div>
                 </div>
             </div>
@@ -209,15 +209,47 @@
     </div>
 
     <div id="libraryModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <!-- ... library modal content ... -->
+        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-lg m-4 border border-border-color modal">
+            <h2 class="text-2xl font-bold mb-4">Sound Library</h2>
+            <p class="text-text-secondary mb-4 text-sm">Sounds from your GitHub repository. Select sounds to add them to a new section.</p>
+            <div id="library-sound-list" class="overflow-y-auto bg-gray-900/50 rounded-lg p-2 border border-border-color space-y-1">
+                <!-- Library sounds will be populated here -->
+            </div>
+            <div class="flex justify-between items-center mt-6">
+                 <button id="librarySelectAll" class="text-sm text-blue-400 hover:underline">Select All</button>
+                <div>
+                    <button id="libraryCancelBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Close</button>
+                    <button id="libraryAddBtn" class="bg-primary-color hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg">Add Selected</button>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div id="shareModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <!-- ... share modal content ... -->
+        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-lg m-4 border border-border-color modal">
+            <h2 class="text-2xl font-bold mb-4">Share Your Soundboard</h2>
+            <p class="text-text-secondary mb-4 text-sm">Copy this link to share your current layout. Anyone with the link will see your soundboard exactly as you've set it up.</p>
+            <div class="flex gap-2">
+                <input type="text" id="shareLinkInput" readonly class="w-full bg-gray-900/50 border border-border-color text-text-secondary rounded-lg px-3 py-2 focus:outline-none">
+                <button id="copyLinkBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+            </div>
+             <div class="flex justify-end mt-6">
+                <button id="shareCloseBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Close</button>
+            </div>
+        </div>
     </div>
 
     <div id="confirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <!-- ... confirm modal content ... -->
+        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-sm m-4 border border-border-color modal">
+            <h2 id="confirmModalTitle" class="text-xl font-bold mb-2">Are you sure?</h2>
+            <p id="confirmModalText" class="text-text-secondary mb-6">This action cannot be undone.</p>
+            <div class="flex justify-end gap-3">
+                <button id="confirmCancelBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Cancel</button>
+                <button id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Yes, delete</button>
+            </div>
+        </div>
     </div>
 
     <div id="notification-container" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
@@ -231,6 +263,7 @@
         const gridSizeSlider = document.getElementById('gridSizeSlider');
         const boardTitle = document.getElementById('board-title');
         const boardTitleInput = document.getElementById('board-title-input');
+        const boardIcon = document.getElementById('board-icon');
         
         // Modals & Forms
         const modal = document.getElementById('modal');
@@ -249,8 +282,13 @@
         const exportBtn = document.getElementById('exportBtn');
         const importInput = document.getElementById('importInput');
         const shareBtn = document.getElementById('shareBtn');
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+        const shareCloseBtn = document.getElementById('shareCloseBtn');
         const appearanceCloseBtn = document.getElementById('appearanceCloseBtn');
         const resetAppearanceBtn = document.getElementById('resetAppearanceBtn');
+        const libraryCancelBtn = document.getElementById('libraryCancelBtn');
+        const libraryAddBtn = document.getElementById('libraryAddBtn');
+        const librarySelectAll = document.getElementById('librarySelectAll');
         
         // --- State ---
         let audioContext = null;
@@ -267,7 +305,7 @@
                 '--primary-color': '#3b82f6',
                 '--text-primary': '#f9fafb',
             },
-            buttonShape: 'rounded-2xl'
+            buttonShape: 'rounded-xl'
         };
 
         // --- Core Functions ---
@@ -283,9 +321,11 @@
                     const savedData = localStorage.getItem('soundboardDataV2');
                     boardData = savedData ? JSON.parse(savedData) : { settings: { ...defaultSettings }, sections: [] };
                 }
-                // Ensure settings exist for older saved data
                 if (!boardData.settings) {
                     boardData.settings = { ...defaultSettings };
+                }
+                 if (!boardData.sections) {
+                    boardData.sections = [];
                 }
             } catch (error) {
                 console.error("Failed to load data:", error);
@@ -308,18 +348,69 @@
 
         function applySettings() {
             const settings = boardData.settings;
-            // Apply Title
             boardTitle.textContent = settings.title;
             document.title = settings.title;
             boardTitleInput.value = settings.title;
-
-            // Apply Theme
             Object.entries(settings.theme).forEach(([key, value]) => {
                 document.documentElement.style.setProperty(key, value);
             });
-
-            // Apply Button Shape (will be used during render)
+            boardIcon.style.color = settings.theme['--primary-color'];
             updateAppearanceModalUI();
+        }
+
+        function playSound(url, button = null) {
+            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioContext.state === 'suspended') audioContext.resume();
+            if (currentAudioSource) try { currentAudioSource.stop(); } catch (e) {}
+
+            const originalIconHTML = button ? button.innerHTML : null;
+            if(button) {
+                button.disabled = true;
+                button.innerHTML = '<div class="spinner !w-5 !h-5"></div>';
+            }
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Network response was not ok (${response.status})`);
+                    return response.arrayBuffer();
+                })
+                .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+                .then(audioBuffer => {
+                    const source = audioContext.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(audioContext.destination);
+                    source.start(0);
+                    currentAudioSource = source;
+                    source.onended = () => { 
+                        if(button) {
+                            button.innerHTML = originalIconHTML; 
+                            button.disabled = false;
+                        }
+                    };
+                }).catch(e => {
+                    let userMessage = `Error playing sound: ${e.message}`;
+                    if (e instanceof TypeError) userMessage = 'Could not play sound. The audio host may be blocking it (CORS policy).';
+                    showNotification(userMessage, 'error');
+                    console.error('Error with audio playback:', e);
+                    if(button) {
+                        button.innerHTML = originalIconHTML;
+                        button.disabled = false;
+                    }
+                });
+        }
+        
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notification-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-600' : 'bg-blue-600';
+            toast.className = `notification-toast ${bgColor} text-white font-bold py-2 px-4 rounded-lg shadow-lg`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.5s';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
         }
 
         // --- Rendering ---
@@ -331,12 +422,14 @@
 
             sectionsToRender.forEach(section => {
                 const sectionEl = document.createElement('div');
-                // ... section element creation ...
-                 const buttonGridSize = parseInt(gridSizeSlider.value);
-                 const buttonGridCols = `grid-cols-${buttonGridSize}`;
-                 
-                 // ... sectionEl innerHTML setup, using buttonGridCols ...
-                 sectionEl.innerHTML = `
+                sectionEl.className = 'bg-surface-color rounded-xl p-4 border border-border-color draggable-section';
+                sectionEl.dataset.id = section.id;
+                sectionEl.style.gridColumn = `span ${section.width || 4}`;
+                
+                const buttonGridSize = parseInt(gridSizeSlider.value);
+                const buttonGridCols = `grid-cols-${buttonGridSize}`;
+
+                sectionEl.innerHTML = `
                     <div class="flex justify-between items-center mb-4 pb-3 border-b border-border-color">
                         <h2 class="text-xl font-bold truncate">${section.title}</h2>
                         <div class="edit-controls hidden items-center gap-2 text-text-secondary">
@@ -347,17 +440,14 @@
                     </div>
                     <div class="grid ${buttonGridCols} gap-3 sound-container"></div>`;
 
-
                 const soundContainer = sectionEl.querySelector('.sound-container');
-                section.sounds.forEach(sound => soundContainer.appendChild(createSoundButton(sound, section.id)));
+                (section.sounds || []).forEach(sound => soundContainer.appendChild(createSoundButton(sound, section.id)));
                 
-                // ... Add sound button setup ...
-                 const addSoundBtn = document.createElement('button');
+                const addSoundBtn = document.createElement('button');
                 addSoundBtn.className = `add-sound-btn hidden aspect-square border-2 border-dashed border-gray-600 ${boardData.settings.buttonShape} flex items-center justify-center text-gray-500 hover:bg-gray-700 hover:text-white transition`;
                 addSoundBtn.dataset.sectionId = section.id;
                 addSoundBtn.innerHTML = '<i class="fas fa-plus fa-2x"></i>';
                 soundContainer.appendChild(addSoundBtn);
-
 
                 soundboardGrid.appendChild(sectionEl);
             });
@@ -366,7 +456,7 @@
 
         function createSoundButton(sound, sectionId) {
             const soundBtn = document.createElement('button');
-            const buttonShape = boardData.settings.buttonShape || 'rounded-2xl';
+            const buttonShape = boardData.settings.buttonShape || 'rounded-xl';
             const buttonSize = parseInt(gridSizeSlider.value);
             
             let textSize = 'text-sm';
@@ -392,27 +482,64 @@
         }
 
         // --- Event Handlers ---
+        soundboardGrid.addEventListener('click', (e) => {
+            const targetButton = e.target.closest('button, span');
+            if (!targetButton) return;
+
+            const isEditMode = document.body.classList.contains('edit-mode');
+            if (isEditMode) {
+                if (targetButton.classList.contains('add-sound-btn')) {
+                    openModal('sound', 'add', { sectionId: targetButton.dataset.sectionId });
+                } else if (targetButton.classList.contains('edit-item-btn')) {
+                    openModal(targetButton.dataset.type, 'edit', targetButton.dataset);
+                } else if (targetButton.classList.contains('delete-item-btn')) {
+                    const { type, id, sectionId } = targetButton.dataset;
+                    openConfirmModal(`this ${type}`, () => deleteItem(type, id, sectionId));
+                }
+            } else {
+                const soundBtn = e.target.closest('.sound-btn');
+                if (soundBtn) playSound(soundBtn.dataset.url, soundBtn.querySelector('.fa-music'));
+            }
+        });
+        
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            if (!searchTerm) { renderSoundboard(); return; }
+            
+            const filteredSections = JSON.parse(JSON.stringify(boardData.sections))
+                .map(section => {
+                    section.sounds = section.sounds.filter(sound => sound.name.toLowerCase().includes(searchTerm));
+                    return section;
+                }).filter(section => section.sounds.length > 0);
+            renderSoundboard(filteredSections);
+        });
+
+        editModeToggle.addEventListener('change', () => {
+            document.body.classList.toggle('edit-mode');
+            updateEditMode();
+        });
         
         function updateEditMode() {
             const isEditMode = document.body.classList.contains('edit-mode');
             document.getElementById('edit-actions').style.display = isEditMode ? 'flex' : 'none';
             document.body.classList.toggle('edit-mode-active', isEditMode);
             
-            // Toggle title editor
             boardTitle.style.display = isEditMode ? 'none' : 'block';
             boardTitleInput.style.display = isEditMode ? 'block' : 'none';
             if(isEditMode) boardTitleInput.style.width = `${boardTitle.offsetWidth}px`;
 
-            // Make draggable
             document.querySelectorAll('.draggable, .draggable-section').forEach(el => el.setAttribute('draggable', isEditMode));
             document.querySelectorAll('.add-sound-btn').forEach(btn => btn.style.display = isEditMode ? 'flex' : 'none');
             document.querySelectorAll('.edit-controls').forEach(el => el.style.display = isEditMode ? 'flex' : 'none');
         }
+        
+        gridSizeSlider.addEventListener('input', () => renderSoundboard());
+        gridSizeSlider.addEventListener('change', () => saveGridSize());
 
         boardTitleInput.addEventListener('input', () => {
-            boardData.settings.title = boardTitleInput.value;
-            boardTitle.textContent = boardTitleInput.value;
-            document.title = boardTitleInput.value;
+            boardData.settings.title = boardTitleInput.value || "My Soundboard";
+            boardTitle.textContent = boardData.settings.title;
+            document.title = boardData.settings.title;
         });
         boardTitleInput.addEventListener('change', saveData);
         
@@ -452,34 +579,281 @@
             }
             modal.classList.remove('hidden');
         }
+        
+        function closeModal() {
+            modal.classList.add('hidden');
+            appearanceModal.classList.add('hidden');
+            confirmModal.classList.add('hidden');
+            shareModal.classList.add('hidden');
+            libraryModal.classList.add('hidden');
+        }
 
         modalForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            // ... form validation ...
-            const id = document.getElementById('editId').value;
-            const name = document.getElementById('itemName').value;
+            const nameInput = document.getElementById('itemName');
+            const urlInput = document.getElementById('itemUrl');
+            const type = document.getElementById('editType').value;
 
-            if (document.getElementById('editType').value === 'section') {
+            if (!nameInput.value.trim()) { showNotification('Name is required.', 'error'); return; }
+            if (type === 'sound') {
+                try { new URL(urlInput.value); } catch (_) { showNotification('Please enter a valid URL.', 'error'); return; }
+            }
+            
+            const id = document.getElementById('editId').value;
+            const name = nameInput.value;
+
+            if (type === 'section') {
                 const width = document.getElementById('itemWidth').value;
                 const bulkColor = document.getElementById('itemBulkColor').value;
-
-                if (id) { // Editing existing section
+                if (id) {
                     const section = boardData.sections.find(s => s.id === id);
                     if(section) {
                         section.title = name;
                         section.width = width;
                         section.sounds.forEach(sound => sound.color = bulkColor);
                     }
-                } else { // Adding new section
+                } else {
                     boardData.sections.push({ id: `section-${Date.now()}`, title: name, width: width, sounds: [] });
                 }
-            } else {
-                // ... sound saving logic ...
+            } else { // sound
+                const url = urlInput.value;
+                const color = document.getElementById('itemColor').value;
+                const sectionId = document.getElementById('editSectionId').value;
+                const section = boardData.sections.find(s => s.id === sectionId);
+                if (!section) { showNotification('Error: Section not found!', 'error'); return; }
+
+                if (id) { // Editing existing sound
+                    const sound = section.sounds.find(snd => snd.id === id);
+                    if (sound) { sound.name = name; sound.url = url; sound.color = color; }
+                } else { // Adding new sound
+                    section.sounds.push({ id: `sound-${Date.now()}`, name, url, color });
+                }
             }
             saveData();
             renderSoundboard();
             closeModal();
-            showNotification('Saved successfully!');
+            showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} saved successfully!`);
+        });
+
+        [cancelBtn, appearanceCloseBtn, shareCloseBtn, libraryCancelBtn].forEach(btn => btn.addEventListener('click', closeModal));
+        addSectionBtn.addEventListener('click', () => openModal('section', 'add', {}));
+
+        // --- Confirmation Modal ---
+        function openConfirmModal(actionText, onConfirm) {
+            document.getElementById('confirmModalText').textContent = `Are you sure you want to delete ${actionText}?`;
+            confirmCallback = onConfirm;
+            confirmModal.classList.remove('hidden');
+        }
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+            if (confirmCallback) confirmCallback();
+            closeModal();
+        });
+        document.getElementById('confirmCancelBtn').addEventListener('click', closeModal);
+
+        // --- CRUD operations ---
+        function deleteItem(type, id, sectionId) {
+            if (type === 'section') {
+                boardData.sections = boardData.sections.filter(s => s.id !== id);
+            } else {
+                const section = boardData.sections.find(s => s.id === sectionId);
+                if (section) section.sounds = section.sounds.filter(snd => snd.id !== id);
+            }
+            saveData();
+            renderSoundboard();
+            showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted.`, 'info');
+        }
+        
+        // --- Drag and Drop ---
+        soundboardGrid.addEventListener('dragstart', (e) => {
+            if (!document.body.classList.contains('edit-mode-active')) { e.preventDefault(); return; }
+            draggedItem = e.target;
+            setTimeout(() => e.target.classList.add('dragging'), 0);
+        });
+
+        soundboardGrid.addEventListener('dragend', () => {
+            draggedItem?.classList.remove('dragging');
+            draggedItem = null;
+        });
+
+        soundboardGrid.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (!draggedItem) return;
+            const target = e.target.closest('.draggable, .draggable-section, .sound-container');
+            if (target) {
+                document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+                if (!target.classList.contains('sound-container')) {
+                    target.classList.add('drag-over');
+                }
+            }
+        });
+
+        soundboardGrid.addEventListener('dragleave', e => e.target.closest('.drag-over')?.classList.remove('drag-over'));
+
+        soundboardGrid.addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            if (!draggedItem) return;
+
+            const isSectionDrag = draggedItem.classList.contains('draggable-section');
+            const target = e.target.closest(isSectionDrag ? '.draggable-section' : '.draggable, .sound-container');
+            if (!target || target === draggedItem) return;
+            
+            if (isSectionDrag) {
+                const fromIndex = boardData.sections.findIndex(s => s.id === draggedItem.dataset.id);
+                const toIndex = boardData.sections.findIndex(s => s.id === target.dataset.id);
+                const [moved] = boardData.sections.splice(fromIndex, 1);
+                boardData.sections.splice(toIndex, 0, moved);
+            } else { // Sound drag
+                const fromSection = boardData.sections.find(s => s.id === draggedItem.dataset.sectionId);
+                const fromSoundIndex = fromSection.sounds.findIndex(s => s.id === draggedItem.dataset.id);
+                
+                const targetSoundContainer = target.closest('.sound-container');
+                const toSection = boardData.sections.find(s => s.id === targetSoundContainer.closest('.draggable-section').dataset.id);
+                const toSoundEl = target.closest('.draggable');
+                let toSoundIndex = toSoundEl ? toSection.sounds.findIndex(s => s.id === toSoundEl.dataset.id) : toSection.sounds.length;
+                
+                const [movedSound] = fromSection.sounds.splice(fromSoundIndex, 1);
+                toSection.sounds.splice(toSoundIndex, 0, movedSound);
+            }
+            saveData();
+            renderSoundboard();
+        });
+        
+        // --- Import / Export / Share ---
+        exportBtn.addEventListener('click', () => {
+            const dataStr = JSON.stringify(boardData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${boardData.settings.title.replace(/ /g,"_") || 'soundboard'}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        importInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+                    if (importedData.settings && importedData.sections) {
+                        openConfirmModal('your current soundboard by importing a new one', () => {
+                            boardData = importedData;
+                            saveData();
+                            applySettings();
+                            renderSoundboard();
+                            showNotification('Soundboard imported successfully!');
+                        });
+                    } else { showNotification('Invalid soundboard file format.', 'error'); }
+                } catch (error) { showNotification('Error parsing JSON file.', 'error'); }
+                 finally { importInput.value = ''; }
+            };
+            reader.readAsText(file);
+        });
+        
+        shareBtn.addEventListener('click', () => {
+            const jsonString = JSON.stringify(boardData);
+            const compressed = pako.deflate(jsonString);
+            const encodedData = btoa(String.fromCharCode.apply(null, compressed));
+            const shareLink = `${window.location.origin}${window.location.pathname}#data=${encodedData}`;
+            
+            const shareLinkInput = document.getElementById('shareLinkInput');
+            shareLinkInput.value = shareLink;
+            shareModal.classList.remove('hidden');
+            shareLinkInput.select();
+        });
+
+        copyLinkBtn.addEventListener('click', () => {
+            const shareLinkInput = document.getElementById('shareLinkInput');
+            shareLinkInput.select();
+            try {
+                document.execCommand('copy');
+                showNotification('Link copied to clipboard!', 'info');
+            } catch (err) {
+                showNotification('Failed to copy link.', 'error');
+                console.error('Copy failed', err);
+            }
+        });
+
+        // --- Sound Library Logic ---
+        libraryBtn.addEventListener('click', async () => {
+            libraryModal.classList.remove('hidden');
+            librarySoundList.innerHTML = '<div class="flex justify-center items-center p-8"><div class="spinner !w-8 !h-8"></div></div>';
+            
+            try {
+                const response = await fetch('https://api.github.com/repos/MrLynchWAMS/soundboard/contents/sounds');
+                if (!response.ok) throw new Error(`GitHub API Error: ${response.status}`);
+                const files = await response.json();
+                
+                librarySoundList.innerHTML = '';
+                const audioFiles = files.filter(file => file.type === 'file' && /\.(mp3|wav|ogg|m4a)$/i.test(file.name));
+
+                if (audioFiles.length === 0) {
+                    librarySoundList.innerHTML = '<p class="text-center text-gray-500 p-4">No audio files found in the GitHub repository `sounds` folder.</p>';
+                    return;
+                }
+
+                audioFiles.forEach(file => {
+                    const soundEl = document.createElement('div');
+                    soundEl.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-700';
+                    soundEl.innerHTML = `
+                        <label class="flex items-center gap-3 cursor-pointer w-full">
+                            <input type="checkbox" data-name="${file.name}" data-url="${file.download_url}" class="form-checkbox h-5 w-5 bg-gray-800 border-gray-600 rounded text-blue-500 focus:ring-blue-500">
+                            <span class="truncate">${file.name}</span>
+                        </label>
+                        <button class="preview-lib-sound-btn p-2 text-gray-400 hover:text-white" data-url="${file.download_url}">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    `;
+                    librarySoundList.appendChild(soundEl);
+                });
+            } catch (error) {
+                console.error("Error fetching sound library:", error);
+                librarySoundList.innerHTML = `<p class="text-center text-red-400 p-4">Could not load library. ${error.message}</p>`;
+            }
+        });
+
+        librarySoundList.addEventListener('click', e => {
+            const previewBtn = e.target.closest('.preview-lib-sound-btn');
+            if (previewBtn) {
+                playSound(previewBtn.dataset.url, previewBtn);
+            }
+        });
+        
+        librarySelectAll.addEventListener('click', () => {
+            const checkboxes = librarySoundList.querySelectorAll('input[type="checkbox"]');
+            const isAllChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !isAllChecked);
+            librarySelectAll.textContent = isAllChecked ? 'Select All' : 'Deselect All';
+        });
+
+        libraryAddBtn.addEventListener('click', () => {
+            const selectedSounds = Array.from(librarySoundList.querySelectorAll('input[type="checkbox"]:checked'));
+            if (selectedSounds.length === 0) {
+                showNotification('No sounds selected.', 'error');
+                return;
+            }
+
+            const newSection = {
+                id: `section-${Date.now()}`,
+                title: 'From Library',
+                width: 4,
+                sounds: selectedSounds.map((input, i) => ({
+                    id: `sound-${Date.now() + i}`,
+                    name: input.dataset.name.replace(/\.[^/.]+$/, ""), // Remove file extension for name
+                    url: input.dataset.url,
+                    color: '#1f2937'
+                }))
+            };
+
+            boardData.sections.push(newSection);
+            saveData();
+            renderSoundboard();
+            closeModal();
+            showNotification(`Added ${selectedSounds.length} sounds.`, 'info');
         });
         
         // --- Appearance Modal ---
@@ -495,7 +869,8 @@
         });
 
         resetAppearanceBtn.addEventListener('click', () => {
-            boardData.settings = { ...boardData.settings, ...defaultSettings };
+            boardData.settings.theme = { ...defaultSettings.theme };
+            boardData.settings.buttonShape = defaultSettings.buttonShape;
             applySettings();
         });
 
@@ -516,6 +891,7 @@
                 const color = e.target.value;
                 boardData.settings.theme[cssVar] = color;
                 document.documentElement.style.setProperty(cssVar, color);
+                boardIcon.style.color = boardData.settings.theme['--primary-color'];
             }
             if(e.target.name === 'buttonShape') {
                 boardData.settings.buttonShape = e.target.value;
@@ -536,22 +912,6 @@
             });
         }
         
-        // --- Initialize ---
-        // other functions (playSound, notifications, crud, dnd, import/export etc.) are assumed to be here and complete.
-        // I have truncated them for brevity but they are necessary for functionality.
-        // The below functions are included as they were modified.
-        // ... (All other functions from previous version are here) ...
-        // The following logic replaces the original functions from the last prompt
-        function closeModal() {
-            modal.classList.add('hidden');
-            appearanceModal.classList.add('hidden');
-            confirmModal.classList.add('hidden');
-            shareModal.classList.add('hidden');
-            libraryModal.classList.add('hidden');
-        }
-
-        [cancelBtn, appearanceCloseBtn].forEach(btn => btn.addEventListener('click', closeModal));
-
         // --- Initialize ---
         loadData();
     });
