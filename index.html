@@ -180,18 +180,56 @@
 
     <div id="aiModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
         <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-md m-4 border border-border-color modal">
-            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">✨ Create with AI</h2>
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                ✨ Create with AI
+                <span class="group relative">
+                    <i class="fas fa-info-circle text-gray-400 text-sm cursor-pointer"></i>
+                    <span class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 p-2 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        This feature requires a valid Gemini API key in the hosting environment.
+                    </span>
+                </span>
+            </h2>
             <p class="text-text-secondary mb-4 text-sm">Enter a theme, and Gemini will generate a new section with sound ideas.</p>
-            <form id="aiModalForm"><!-- ... --></form>
+            <form id="aiModalForm">
+                <div class="mb-4">
+                    <label for="aiTheme" class="block text-sm font-medium text-text-secondary mb-1">Soundboard Theme</label>
+                    <input type="text" id="aiTheme" class="w-full bg-gray-900/50 border border-border-color text-text-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-color" placeholder="e.g., Pirate Battle, Sci-Fi..." required>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" id="aiCancelBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Cancel</button>
+                    <button type="submit" id="aiGenerateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center w-28">
+                        Generate
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
     
     <div id="shareModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-lg m-4 border border-border-color modal"><!-- ... --></div>
+        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-lg m-4 border border-border-color modal">
+            <h2 class="text-2xl font-bold mb-4">Share Your Soundboard</h2>
+            <p class="text-text-secondary mb-4 text-sm">Copy this link to share your current layout. Anyone with the link will see your soundboard exactly as you've set it up.</p>
+            <div class="flex gap-2">
+                <input type="text" id="shareLinkInput" readonly class="w-full bg-gray-900/50 border border-border-color text-text-secondary rounded-lg px-3 py-2 focus:outline-none">
+                <button id="copyLinkBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+            </div>
+             <div class="flex justify-end mt-6">
+                <button id="shareCloseBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Close</button>
+            </div>
+        </div>
     </div>
 
     <div id="confirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-sm m-4 border border-border-color modal"><!-- ... --></div>
+        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-sm m-4 border border-border-color modal">
+            <h2 id="confirmModalTitle" class="text-xl font-bold mb-2">Are you sure?</h2>
+            <p id="confirmModalText" class="text-text-secondary mb-6">This action cannot be undone.</p>
+            <div class="flex justify-end gap-3">
+                <button id="confirmCancelBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Cancel</button>
+                <button id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Yes, delete</button>
+            </div>
+        </div>
     </div>
 
     <div id="notification-container" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
@@ -210,6 +248,8 @@
         const cancelBtn = document.getElementById('cancelBtn');
         const confirmModal = document.getElementById('confirmModal');
         const aiModal = document.getElementById('aiModal');
+        const aiModalForm = document.getElementById('aiModalForm');
+        const aiCancelBtn = document.getElementById('aiCancelBtn');
         const shareModal = document.getElementById('shareModal');
         const libraryModal = document.getElementById('libraryModal');
         const librarySoundList = document.getElementById('library-sound-list');
@@ -221,6 +261,8 @@
         const exportBtn = document.getElementById('exportBtn');
         const importInput = document.getElementById('importInput');
         const shareBtn = document.getElementById('shareBtn');
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+        const shareCloseBtn = document.getElementById('shareCloseBtn');
         const libraryCancelBtn = document.getElementById('libraryCancelBtn');
         const libraryAddBtn = document.getElementById('libraryAddBtn');
         const librarySelectAll = document.getElementById('librarySelectAll');
@@ -237,14 +279,20 @@
         // --- Core Functions ---
         const loadData = () => {
             try {
+                // Prioritize loading from URL hash
                 if (window.location.hash && window.location.hash.startsWith('#data=')) {
-                    // ... (load from URL logic)
+                    const encodedData = window.location.hash.substring(6);
+                    const compressed = atob(encodedData).split('').map(c => c.charCodeAt(0));
+                    const decompressed = pako.inflate(new Uint8Array(compressed), { to: 'string' });
+                    soundData = JSON.parse(decompressed);
+                    showNotification('Loaded soundboard from shared link!', 'info');
                 } else {
                     const savedData = localStorage.getItem('soundboardData');
                     soundData = savedData ? JSON.parse(savedData) : initialData;
                 }
             } catch (error) {
-                // ... (error handling)
+                console.error("Failed to load data:", error);
+                showNotification("Could not load data. Using default.", "error");
                 soundData = initialData;
             }
             const savedGridSize = localStorage.getItem('soundboardButtonGridSize') || '8';
@@ -253,7 +301,8 @@
         };
 
         const saveData = () => {
-             localStorage.setItem('soundboardData', JSON.stringify(soundData));
+            localStorage.setItem('soundboardData', JSON.stringify(soundData));
+            // If the user modifies a shared board, we clear the hash to avoid confusion.
             if (window.location.hash) {
                 history.pushState("", document.title, window.location.pathname + window.location.search);
             }
@@ -265,8 +314,11 @@
             if (audioContext.state === 'suspended') audioContext.resume();
             if (currentAudioSource) try { currentAudioSource.stop(); } catch (e) {}
 
-            const originalIcon = button ? button.innerHTML : null;
-            if(button) button.innerHTML = '<div class="spinner !w-5 !h-5"></div>';
+            const originalIconHTML = button ? button.innerHTML : null;
+            if(button) {
+                button.disabled = true;
+                button.innerHTML = '<div class="spinner !w-5 !h-5"></div>';
+            }
             
             fetch(url)
                 .then(response => {
@@ -280,45 +332,185 @@
                     source.connect(audioContext.destination);
                     source.start(0);
                     currentAudioSource = source;
-                    source.onended = () => { if(button) button.innerHTML = originalIcon; };
+                    source.onended = () => { 
+                        if(button) {
+                            button.innerHTML = originalIconHTML; 
+                            button.disabled = false;
+                        }
+                    };
                 }).catch(e => {
                     let userMessage = `Error playing sound: ${e.message}`;
                     if (e instanceof TypeError) userMessage = 'Could not play sound. The audio host may be blocking it (CORS policy).';
                     showNotification(userMessage, 'error');
                     console.error('Error with audio playback:', e);
-                    if(button) button.innerHTML = originalIcon;
+                    if(button) {
+                        button.innerHTML = originalIconHTML;
+                        button.disabled = false;
+                    }
                 });
         }
         
         function showNotification(message, type = 'info') {
-            // ... (notification logic)
+            const container = document.getElementById('notification-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-600' : 'bg-blue-600';
+            toast.className = `notification-toast ${bgColor} text-white font-bold py-2 px-4 rounded-lg shadow-lg`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.5s';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
         }
 
         // --- Rendering ---
         
         function renderSoundboard(filteredData = null) {
-            // ... (render logic remains the same)
+            const dataToRender = filteredData || soundData;
+            soundboardGrid.innerHTML = '';
+            document.getElementById('empty-state').style.display = (dataToRender.length === 0 && !filteredData) ? 'block' : 'none';
+
+            dataToRender.forEach(section => {
+                const sectionEl = document.createElement('div');
+                sectionEl.className = 'bg-surface-color rounded-xl p-4 border border-border-color draggable-section';
+                sectionEl.dataset.id = section.id;
+                sectionEl.style.gridColumn = `span ${section.width || 4}`;
+
+                const buttonGridSize = gridSizeSlider.value;
+                const buttonGridCols = { '4': 'grid-cols-4', '5': 'grid-cols-5', '6': 'grid-cols-6', '7': 'grid-cols-7', '8': 'grid-cols-8', '9': 'grid-cols-9', '10': 'grid-cols-10', '11': 'grid-cols-11', '12': 'grid-cols-12' };
+                const buttonColClass = buttonGridCols[buttonGridSize] || 'grid-cols-8';
+
+                sectionEl.innerHTML = `
+                    <div class="flex justify-between items-center mb-4 pb-3 border-b border-border-color">
+                        <h2 class="text-xl font-bold truncate">${section.title}</h2>
+                        <div class="edit-controls hidden items-center gap-2 text-text-secondary">
+                            <button class="edit-item-btn hover:text-white" data-type="section" data-id="${section.id}" title="Edit Section"><i class="fas fa-pencil-alt"></i></button>
+                            <button class="delete-item-btn hover:text-red-400" data-type="section" data-id="${section.id}" title="Delete Section"><i class="fas fa-trash"></i></button>
+                            <span class="drag-handle cursor-move" title="Drag Section"><i class="fas fa-grip-vertical"></i></span>
+                        </div>
+                    </div>
+                    <div class="grid ${buttonColClass} gap-3 sound-container"></div>`;
+
+                const soundContainer = sectionEl.querySelector('.sound-container');
+                section.sounds.forEach(sound => soundContainer.appendChild(createSoundButton(sound, section.id)));
+                
+                // Add the "Add Sound" button in edit mode
+                const addSoundBtn = document.createElement('button');
+                addSoundBtn.className = 'add-sound-btn hidden aspect-square border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-700 hover:text-white transition';
+                addSoundBtn.dataset.sectionId = section.id;
+                addSoundBtn.innerHTML = '<i class="fas fa-plus fa-2x"></i>';
+                soundContainer.appendChild(addSoundBtn);
+
+                soundboardGrid.appendChild(sectionEl);
+            });
+            updateEditMode();
         }
 
         function createSoundButton(sound, sectionId) {
-            // ... (create button logic remains the same)
+            const soundBtn = document.createElement('button');
+            soundBtn.className = 'sound-btn text-white font-semibold py-3 px-2 rounded-lg flex flex-col items-center justify-center text-center aspect-square draggable';
+            soundBtn.dataset.url = sound.url;
+            soundBtn.dataset.id = sound.id;
+            soundBtn.dataset.sectionId = sectionId;
+            soundBtn.style.backgroundColor = sound.color || 'var(--surface-color)';
+
+            soundBtn.innerHTML = `
+                <div class="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity edit-overlay hidden items-center justify-center gap-3 text-white">
+                    <span class="edit-item-btn cursor-pointer p-2 rounded-full hover:bg-white/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Edit Sound"><i class="fas fa-pencil-alt"></i></span>
+                    <span class="delete-item-btn cursor-pointer p-2 rounded-full hover:bg-white/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Delete Sound"><i class="fas fa-trash"></i></span>
+                </div>
+                <div class="flex flex-col items-center justify-center gap-2 pointer-events-none">
+                    <i class="fas fa-music text-2xl text-white/60"></i>
+                    <span class="text-sm break-words leading-tight">${sound.name}</span>
+                </div>`;
+            return soundBtn;
         }
 
         // --- Event Handlers ---
         soundboardGrid.addEventListener('click', (e) => {
-            // ... (existing click logic)
-            // Modified else block for non-edit mode
-            const soundBtn = e.target.closest('.sound-btn');
-            if (!document.body.classList.contains('edit-mode') && soundBtn) {
-                 playSound(soundBtn.dataset.url, soundBtn.querySelector('i'));
+            const targetButton = e.target.closest('button, span');
+            if (!targetButton) return;
+
+            const isEditMode = document.body.classList.contains('edit-mode');
+            if (isEditMode) {
+                if (targetButton.classList.contains('add-sound-btn')) {
+                    openModal('sound', 'add', { sectionId: targetButton.dataset.sectionId });
+                } else if (targetButton.classList.contains('edit-item-btn')) {
+                    openModal(targetButton.dataset.type, 'edit', targetButton.dataset);
+                } else if (targetButton.classList.contains('delete-item-btn')) {
+                    const { type, id, sectionId } = targetButton.dataset;
+                    openConfirmModal(`this ${type}`, () => deleteItem(type, id, sectionId));
+                }
+            } else {
+                const soundBtn = e.target.closest('.sound-btn');
+                if (soundBtn) playSound(soundBtn.dataset.url, soundBtn.querySelector('.fa-music'));
             }
         });
         
-        // ... (other event handlers remain mostly the same)
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            if (!searchTerm) { renderSoundboard(); return; }
+            
+            const filteredData = JSON.parse(JSON.stringify(soundData))
+                .map(section => {
+                    section.sounds = section.sounds.filter(sound => sound.name.toLowerCase().includes(searchTerm));
+                    return section;
+                }).filter(section => section.sounds.length > 0);
+            renderSoundboard(filteredData);
+        });
+
+        editModeToggle.addEventListener('change', () => {
+            document.body.classList.toggle('edit-mode');
+            updateEditMode();
+        });
+        
+        function updateEditMode() {
+            const isEditMode = document.body.classList.contains('edit-mode');
+            document.getElementById('edit-actions').style.display = isEditMode ? 'flex' : 'none';
+            document.body.classList.toggle('edit-mode-active', isEditMode); // Use a class for CSS targeting
+            document.querySelectorAll('.draggable, .draggable-section').forEach(el => el.setAttribute('draggable', isEditMode));
+            document.querySelectorAll('.add-sound-btn').forEach(btn => btn.style.display = isEditMode ? 'flex' : 'none');
+            document.querySelectorAll('.edit-controls').forEach(el => el.style.display = isEditMode ? 'flex' : 'none');
+        }
+        
+        gridSizeSlider.addEventListener('input', () => renderSoundboard());
+        gridSizeSlider.addEventListener('change', () => saveGridSize());
 
         // --- Modal Logic ---
         function openModal(type, mode, data) {
-            // ... (existing modal logic)
+            modalForm.reset();
+            const { id = '', sectionId = '' } = data;
+            document.getElementById('editId').value = id;
+            document.getElementById('editType').value = type;
+            document.getElementById('editSectionId').value = sectionId;
+
+            ['form-group-url', 'form-group-color', 'form-group-width'].forEach(id => document.getElementById(id).style.display = 'none');
+
+            if (type === 'section') {
+                document.getElementById('form-group-width').style.display = 'block';
+                document.getElementById('modalTitle').textContent = mode === 'add' ? 'Add New Section' : 'Edit Section';
+                if (mode === 'edit') {
+                    const section = soundData.find(s => s.id === id);
+                    document.getElementById('itemName').value = section.title;
+                    document.getElementById('itemWidth').value = section.width || 4;
+                } else {
+                    document.getElementById('itemWidth').value = 4;
+                }
+            } else { // 'sound'
+                ['form-group-url', 'form-group-color'].forEach(id => document.getElementById(id).style.display = 'block');
+                document.getElementById('modalTitle').textContent = mode === 'add' ? 'Add New Sound' : 'Edit Sound';
+                 if (mode === 'edit') {
+                    const section = soundData.find(s => s.id === sectionId);
+                    const sound = section.sounds.find(snd => snd.id === id);
+                    document.getElementById('itemName').value = sound.name;
+                    document.getElementById('itemUrl').value = sound.url;
+                    document.getElementById('itemColor').value = sound.color || '#1f2937';
+                } else {
+                    document.getElementById('itemColor').value = '#1f2937';
+                }
+            }
+            modal.classList.remove('hidden');
         }
 
         function closeModal() {
@@ -330,12 +522,243 @@
         }
 
         modalForm.addEventListener('submit', (e) => {
-            // ... (existing form submit logic)
+            e.preventDefault();
+            const nameInput = document.getElementById('itemName');
+            const urlInput = document.getElementById('itemUrl');
+            const type = document.getElementById('editType').value;
+
+            if (!nameInput.value.trim()) { showNotification('Name is required.', 'error'); return; }
+            if (type === 'sound') {
+                try { new URL(urlInput.value); } catch (_) { showNotification('Please enter a valid URL.', 'error'); return; }
+            }
+            
+            const id = document.getElementById('editId').value;
+            const sectionId = document.getElementById('editSectionId').value;
+            const name = nameInput.value;
+
+            if (type === 'section') {
+                const width = document.getElementById('itemWidth').value;
+                if (id) {
+                    const section = soundData.find(s => s.id === id);
+                    if(section) { section.title = name; section.width = width; }
+                } else {
+                    soundData.push({ id: `section-${Date.now()}`, title: name, width: width, sounds: [] });
+                }
+            } else {
+                const url = urlInput.value;
+                const color = document.getElementById('itemColor').value;
+                const section = soundData.find(s => s.id === sectionId);
+                if (!section) { showNotification('Error: Section not found!', 'error'); return; }
+
+                if (id) {
+                    const sound = section.sounds.find(snd => snd.id === id);
+                    if (sound) { sound.name = name; sound.url = url; sound.color = color; }
+                } else {
+                    section.sounds.push({ id: `sound-${Date.now()}`, name, url, color });
+                }
+            }
+            saveData();
+            renderSoundboard();
+            closeModal();
+            showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} saved successfully!`);
         });
 
-        [cancelBtn, libraryCancelBtn].forEach(btn => btn.addEventListener('click', closeModal));
+        [cancelBtn, aiCancelBtn, shareCloseBtn, libraryCancelBtn].forEach(btn => btn.addEventListener('click', closeModal));
         addSectionBtn.addEventListener('click', () => openModal('section', 'add', {}));
+
+        // --- AI Modal & Gemini API ---
+        aiCreateBtn.addEventListener('click', () => aiModal.classList.remove('hidden'));
         
+        aiModalForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const theme = document.getElementById('aiTheme').value.trim();
+            if (!theme) { showNotification('Please enter a theme.', 'error'); return; }
+            
+            const generateBtn = e.submitter;
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<div class="spinner"></div>';
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const systemPrompt = `You are a creative assistant for a soundboard app. Generate a list of 5 to 8 sound effect names based on a user's theme. Respond ONLY with a valid JSON array of strings. Do not include any other text, explanations, or markdown formatting. Example response for theme "Pirate Ship": ["Cannon Fire", "Sea Shanty", "Parrot Squawk", "Sword Fight", "Waves Crashing"]`;
+            const payload = {
+                contents: [{ parts: [{ text: `Theme: "${theme}"` }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: { responseMimeType: "application/json", responseSchema: { type: "ARRAY", items: { type: "STRING" } } }
+            };
+
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+                const result = await response.json();
+                const soundNamesText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!soundNamesText) throw new Error("Received an empty response from the AI.");
+
+                const soundNames = JSON.parse(soundNamesText);
+                const newSection = {
+                    id: `section-${Date.now()}`, title: theme, width: 4,
+                    sounds: soundNames.map((name, index) => ({
+                        id: `sound-${Date.now() + index}`, name: name,
+                        url: 'https://www.soundjay.com/buttons/sounds/button-20.mp3',
+                        color: '#1f2937'
+                    }))
+                };
+                soundData.push(newSection);
+                saveData();
+                renderSoundboard();
+                closeModal();
+                showNotification(`AI created the "${theme}" section!`, 'info');
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                let errorMessage = "AI failed to generate ideas. Please try again.";
+                if (error.message.includes("403")) errorMessage = "AI generation failed (403 Forbidden). This may be an API key issue.";
+                showNotification(errorMessage, 'error');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate';
+            }
+        });
+        
+        // --- Confirmation Modal ---
+        function openConfirmModal(actionText, onConfirm) {
+            document.getElementById('confirmModalText').textContent = `Are you sure you want to delete ${actionText}?`;
+            confirmCallback = onConfirm;
+            confirmModal.classList.remove('hidden');
+        }
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+            if (confirmCallback) confirmCallback();
+            closeModal();
+        });
+        document.getElementById('confirmCancelBtn').addEventListener('click', closeModal);
+
+        // --- CRUD operations ---
+        function deleteItem(type, id, sectionId) {
+            if (type === 'section') {
+                soundData = soundData.filter(s => s.id !== id);
+            } else {
+                const section = soundData.find(s => s.id === sectionId);
+                if (section) section.sounds = section.sounds.filter(snd => snd.id !== id);
+            }
+            saveData();
+            renderSoundboard();
+            showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted.`, 'info');
+        }
+        
+        // --- Drag and Drop ---
+        soundboardGrid.addEventListener('dragstart', (e) => {
+            if (!document.body.classList.contains('edit-mode-active')) { e.preventDefault(); return; }
+            draggedItem = e.target;
+            setTimeout(() => e.target.classList.add('dragging'), 0);
+        });
+
+        soundboardGrid.addEventListener('dragend', () => {
+            draggedItem?.classList.remove('dragging');
+            draggedItem = null;
+        });
+
+        soundboardGrid.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (!draggedItem) return;
+            const target = e.target.closest('.draggable, .draggable-section, .sound-container');
+            if (target) {
+                document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+                if (!target.classList.contains('sound-container')) {
+                    target.classList.add('drag-over');
+                }
+            }
+        });
+
+        soundboardGrid.addEventListener('dragleave', e => e.target.closest('.drag-over')?.classList.remove('drag-over'));
+
+        soundboardGrid.addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            if (!draggedItem) return;
+
+            const isSectionDrag = draggedItem.classList.contains('draggable-section');
+            const target = e.target.closest(isSectionDrag ? '.draggable-section' : '.draggable, .sound-container');
+            if (!target || target === draggedItem) return;
+            
+            if (isSectionDrag) {
+                const fromIndex = soundData.findIndex(s => s.id === draggedItem.dataset.id);
+                const toIndex = soundData.findIndex(s => s.id === target.dataset.id);
+                const [moved] = soundData.splice(fromIndex, 1);
+                soundData.splice(toIndex, 0, moved);
+            } else { // Sound drag
+                const fromSection = soundData.find(s => s.id === draggedItem.dataset.sectionId);
+                const fromSoundIndex = fromSection.sounds.findIndex(s => s.id === draggedItem.dataset.id);
+                
+                const targetSoundContainer = target.closest('.sound-container');
+                const toSection = soundData.find(s => s.id === targetSoundContainer.closest('.draggable-section').dataset.id);
+                const toSoundEl = target.closest('.draggable');
+                let toSoundIndex = toSoundEl ? toSection.sounds.findIndex(s => s.id === toSoundEl.dataset.id) : toSection.sounds.length;
+                
+                const [movedSound] = fromSection.sounds.splice(fromSoundIndex, 1);
+                toSection.sounds.splice(toSoundIndex, 0, movedSound);
+            }
+            saveData();
+            renderSoundboard();
+        });
+        
+        // --- Import / Export / Share ---
+        exportBtn.addEventListener('click', () => {
+            const dataStr = JSON.stringify(soundData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `my-soundboard-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        importInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+                    if (Array.isArray(importedData)) {
+                        openConfirmModal('your current soundboard by importing a new one', () => {
+                            soundData = importedData;
+                            saveData();
+                            renderSoundboard();
+                            showNotification('Soundboard imported successfully!');
+                        });
+                    } else { showNotification('Invalid soundboard file format.', 'error'); }
+                } catch (error) { showNotification('Error parsing JSON file.', 'error'); }
+                 finally { importInput.value = ''; }
+            };
+            reader.readAsText(file);
+        });
+        
+        shareBtn.addEventListener('click', () => {
+            const jsonString = JSON.stringify(soundData);
+            const compressed = pako.deflate(jsonString);
+            const encodedData = btoa(String.fromCharCode.apply(null, compressed));
+            const shareLink = `${window.location.origin}${window.location.pathname}#data=${encodedData}`;
+            
+            const shareLinkInput = document.getElementById('shareLinkInput');
+            shareLinkInput.value = shareLink;
+            shareModal.classList.remove('hidden');
+            shareLinkInput.select();
+        });
+
+        copyLinkBtn.addEventListener('click', () => {
+            const shareLinkInput = document.getElementById('shareLinkInput');
+            shareLinkInput.select();
+            // Use execCommand for broader compatibility in sandboxed environments
+            try {
+                document.execCommand('copy');
+                showNotification('Link copied to clipboard!', 'info');
+            } catch (err) {
+                showNotification('Failed to copy link.', 'error');
+                console.error('Copy failed', err);
+            }
+        });
+
         // --- Sound Library Logic ---
         libraryBtn.addEventListener('click', async () => {
             libraryModal.classList.remove('hidden');
