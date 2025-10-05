@@ -114,9 +114,10 @@
                 <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-file-export"></i> Export</button>
                 <button onclick="document.getElementById('importInput').click()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-file-import"></i> Import</button>
                 <input type="file" id="importInput" class="hidden" accept=".json">
-                 <div class="flex items-center gap-3 text-sm ml-auto">
-                    <label for="gridSizeSlider" class="font-medium">Button Size</label>
-                    <input type="range" id="gridSizeSlider" min="4" max="16" value="8" class="w-32 cursor-pointer">
+                 <div class="flex items-center gap-2 text-sm ml-auto">
+                    <label for="buttonSizeSlider" class="font-medium">Button Size</label>
+                    <input type="range" id="buttonSizeSlider" min="1" max="100" value="50" class="w-32 cursor-pointer">
+                    <input type="number" id="buttonSizeInput" min="1" max="100" class="w-16 bg-gray-900/50 text-white rounded-lg px-2 py-1 border border-gray-700 text-center">
                 </div>
             </div>
         </header>
@@ -260,7 +261,8 @@
         const soundboardGrid = document.getElementById('soundboard-grid');
         const searchInput = document.getElementById('searchInput');
         const editModeToggle = document.getElementById('editModeToggle');
-        const gridSizeSlider = document.getElementById('gridSizeSlider');
+        const buttonSizeSlider = document.getElementById('buttonSizeSlider');
+        const buttonSizeInput = document.getElementById('buttonSizeInput');
         const boardTitle = document.getElementById('board-title');
         const boardTitleInput = document.getElementById('board-title-input');
         const boardIcon = document.getElementById('board-icon');
@@ -321,19 +323,17 @@
                     const savedData = localStorage.getItem('soundboardDataV2');
                     boardData = savedData ? JSON.parse(savedData) : { settings: { ...defaultSettings }, sections: [] };
                 }
-                if (!boardData.settings) {
-                    boardData.settings = { ...defaultSettings };
-                }
-                 if (!boardData.sections) {
-                    boardData.sections = [];
-                }
+                if (!boardData.settings) boardData.settings = { ...defaultSettings };
+                if (!boardData.sections) boardData.sections = [];
+
             } catch (error) {
                 console.error("Failed to load data:", error);
                 showNotification("Could not load data. Using default.", "error");
                 boardData = { settings: { ...defaultSettings }, sections: [] };
             }
-            const savedGridSize = localStorage.getItem('soundboardButtonGridSize') || '8';
-            gridSizeSlider.value = savedGridSize;
+            const savedButtonSize = localStorage.getItem('soundboardButtonSize') || '50';
+            buttonSizeSlider.value = savedButtonSize;
+            buttonSizeInput.value = savedButtonSize;
             applySettings();
             renderSoundboard();
         };
@@ -344,7 +344,7 @@
                 history.pushState("", document.title, window.location.pathname + window.location.search);
             }
         };
-        const saveGridSize = () => localStorage.setItem('soundboardButtonGridSize', gridSizeSlider.value);
+        const saveButtonSize = () => localStorage.setItem('soundboardButtonSize', buttonSizeSlider.value);
 
         function applySettings() {
             const settings = boardData.settings;
@@ -415,19 +415,32 @@
 
         // --- Rendering ---
         
+        function getColumnCount(sliderValue) {
+            const value = parseInt(sliderValue);
+            // Non-linear mapping: slider left (small value) = more columns (small buttons)
+            // slider right (large value) = fewer columns (large buttons)
+            if (value <= 50) {
+                // Map slider range 1-50 to column range 16-8
+                return Math.round(16 - ((value - 1) / 49) * 8);
+            } else {
+                // Map slider range 51-100 to column range 7-1
+                return Math.round(7 - ((value - 51) / 49) * 6);
+            }
+        }
+
         function renderSoundboard(filteredData = null) {
             const sectionsToRender = filteredData || boardData.sections;
             soundboardGrid.innerHTML = '';
             document.getElementById('empty-state').style.display = (sectionsToRender.length === 0 && !filteredData) ? 'block' : 'none';
+
+            const columns = getColumnCount(buttonSizeSlider.value);
+            const buttonGridCols = `grid-cols-${columns}`;
 
             sectionsToRender.forEach(section => {
                 const sectionEl = document.createElement('div');
                 sectionEl.className = 'bg-surface-color rounded-xl p-4 border border-border-color draggable-section';
                 sectionEl.dataset.id = section.id;
                 sectionEl.style.gridColumn = `span ${section.width || 4}`;
-                
-                const buttonGridSize = parseInt(gridSizeSlider.value);
-                const buttonGridCols = `grid-cols-${buttonGridSize}`;
 
                 sectionEl.innerHTML = `
                     <div class="flex justify-between items-center mb-4 pb-3 border-b border-border-color">
@@ -457,11 +470,11 @@
         function createSoundButton(sound, sectionId) {
             const soundBtn = document.createElement('button');
             const buttonShape = boardData.settings.buttonShape || 'rounded-xl';
-            const buttonSize = parseInt(gridSizeSlider.value);
+            const columns = getColumnCount(buttonSizeSlider.value);
             
             let textSize = 'text-sm';
-            if (buttonSize > 10) textSize = 'text-xs';
-            if (buttonSize > 13) textSize = 'text-[10px]';
+            if (columns > 10) textSize = 'text-xs';
+            if (columns > 13) textSize = 'text-[10px]';
 
             soundBtn.className = `sound-btn text-white font-semibold py-3 px-2 flex flex-col items-center justify-center text-center aspect-square draggable ${buttonShape}`;
             soundBtn.dataset.url = sound.url;
@@ -533,8 +546,16 @@
             document.querySelectorAll('.edit-controls').forEach(el => el.style.display = isEditMode ? 'flex' : 'none');
         }
         
-        gridSizeSlider.addEventListener('input', () => renderSoundboard());
-        gridSizeSlider.addEventListener('change', () => saveGridSize());
+        buttonSizeSlider.addEventListener('input', () => {
+            buttonSizeInput.value = buttonSizeSlider.value;
+            renderSoundboard();
+        });
+        buttonSizeInput.addEventListener('input', () => {
+            buttonSizeSlider.value = buttonSizeInput.value;
+            renderSoundboard();
+        });
+        buttonSizeSlider.addEventListener('change', saveButtonSize);
+        buttonSizeInput.addEventListener('change', saveButtonSize);
 
         boardTitleInput.addEventListener('input', () => {
             boardData.settings.title = boardTitleInput.value || "My Soundboard";
@@ -827,7 +848,7 @@
             const checkboxes = librarySoundList.querySelectorAll('input[type="checkbox"]');
             const isAllChecked = Array.from(checkboxes).every(cb => cb.checked);
             checkboxes.forEach(cb => cb.checked = !isAllChecked);
-            librarySelectAll.textContent = isAllChecked ? 'Select All' : 'Deselect All';
+            librarySelectAll.textContent = isAllChecked ? 'Deselect All' : 'Select All';
         });
 
         libraryAddBtn.addEventListener('click', () => {
