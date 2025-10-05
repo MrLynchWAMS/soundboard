@@ -93,6 +93,9 @@
                     <input type="text" id="board-title-input" class="hidden text-2xl md:text-3xl font-bold bg-transparent border-b-2 border-blue-500 focus:outline-none w-full sm:w-auto">
                 </div>
                 <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
+                    <button id="stopSoundBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold p-2 rounded-lg h-10 w-10 flex items-center justify-center" title="Stop Sound">
+                        <i class="fas fa-stop"></i>
+                    </button>
                     <div class="relative w-full sm:w-64">
                         <input type="text" id="searchInput" placeholder="Search sounds..." class="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <i class="fas fa-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
@@ -145,9 +148,15 @@
                     <label for="itemName" class="block text-sm font-medium text-text-secondary mb-1">Name</label>
                     <input type="text" id="itemName" class="w-full bg-gray-900/50 border border-border-color text-text-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-color" required>
                 </div>
-                <div id="form-group-bulk-color" class="mb-4">
-                     <label for="itemBulkColor" class="block text-sm font-medium text-text-secondary mb-1">Set All Button Colors</label>
-                    <input type="color" id="itemBulkColor" class="w-full h-10 bg-transparent rounded-lg p-0 border-0 cursor-pointer" value="#374151">
+                <div class="grid grid-cols-2 gap-4">
+                    <div id="form-group-bulk-color" class="mb-4">
+                         <label for="itemBulkColor" class="block text-sm font-medium text-text-secondary mb-1">Set All Button Colors</label>
+                        <input type="color" id="itemBulkColor" class="w-full h-10 bg-transparent rounded-lg p-0 border-0 cursor-pointer" value="#374151">
+                    </div>
+                     <div id="form-group-bulk-text-color" class="mb-4">
+                        <label for="itemBulkTextColor" class="block text-sm font-medium text-text-secondary mb-1">Set All Text Colors</label>
+                        <input type="color" id="itemBulkTextColor" class="w-full h-10 bg-transparent rounded-lg p-0 border-0 cursor-pointer" value="#f9fafb">
+                    </div>
                 </div>
                 <div id="form-group-url" class="mb-4">
                     <label for="itemUrl" class="block text-sm font-medium text-text-secondary mb-1">Audio URL</label>
@@ -157,9 +166,15 @@
                     <label for="itemWidth" class="block text-sm font-medium text-text-secondary mb-1">Section Width</label>
                     <input type="range" id="itemWidth" min="1" max="4" value="4" class="w-full">
                 </div>
-                <div id="form-group-color" class="mb-4">
-                    <label for="itemColor" class="block text-sm font-medium text-text-secondary mb-1">Button Color</label>
-                    <input type="color" id="itemColor" class="w-full h-10 bg-transparent rounded-lg p-0 border-0 cursor-pointer" value="#374151">
+                 <div class="grid grid-cols-2 gap-4">
+                    <div id="form-group-color" class="mb-4">
+                        <label for="itemColor" class="block text-sm font-medium text-text-secondary mb-1">Button Color</label>
+                        <input type="color" id="itemColor" class="w-full h-10 bg-transparent rounded-lg p-0 border-0 cursor-pointer" value="#374151">
+                    </div>
+                    <div id="form-group-text-color" class="mb-4">
+                        <label for="itemTextColor" class="block text-sm font-medium text-text-secondary mb-1">Text Color</label>
+                        <input type="color" id="itemTextColor" class="w-full h-10 bg-transparent rounded-lg p-0 border-0 cursor-pointer" value="#f9fafb">
+                    </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-8">
                     <button type="button" id="cancelBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Cancel</button>
@@ -267,6 +282,7 @@
         const boardTitle = document.getElementById('board-title');
         const boardTitleInput = document.getElementById('board-title-input');
         const boardIcon = document.getElementById('board-icon');
+        const stopSoundBtn = document.getElementById('stopSoundBtn');
         
         // Modals & Forms
         const modal = document.getElementById('modal');
@@ -356,19 +372,25 @@
                 document.documentElement.style.setProperty(key, value);
             });
             boardIcon.style.color = settings.theme['--primary-color'];
+            stopSoundBtn.style.backgroundColor = settings.theme['--primary-color'].replace('600', '700');
             updateAppearanceModalUI();
         }
 
-        function playSound(url, button = null) {
+        function stopSound() {
+            if (currentAudioSource) {
+                try { 
+                    currentAudioSource.stop(); 
+                    currentAudioSource = null;
+                } catch (e) {
+                    console.error("Error stopping sound:", e);
+                }
+            }
+        }
+
+        function playSound(url) {
+            stopSound(); // Stop any existing sound before playing a new one
             if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
             if (audioContext.state === 'suspended') audioContext.resume();
-            if (currentAudioSource) try { currentAudioSource.stop(); } catch (e) {}
-
-            const originalIconHTML = button ? button.innerHTML : null;
-            if(button) {
-                button.disabled = true;
-                button.innerHTML = '<div class="spinner !w-5 !h-5"></div>';
-            }
             
             fetch(url)
                 .then(response => {
@@ -382,21 +404,12 @@
                     source.connect(audioContext.destination);
                     source.start(0);
                     currentAudioSource = source;
-                    source.onended = () => { 
-                        if(button) {
-                            button.innerHTML = originalIconHTML; 
-                            button.disabled = false;
-                        }
-                    };
+                    source.onended = () => { if (currentAudioSource === source) currentAudioSource = null; };
                 }).catch(e => {
                     let userMessage = `Error playing sound: ${e.message}`;
                     if (e instanceof TypeError) userMessage = 'Could not play sound. The audio host may be blocking it (CORS policy).';
                     showNotification(userMessage, 'error');
                     console.error('Error with audio playback:', e);
-                    if(button) {
-                        button.innerHTML = originalIconHTML;
-                        button.disabled = false;
-                    }
                 });
         }
         
@@ -416,17 +429,19 @@
 
         // --- Rendering ---
         
+        function getTextColorForBg(hexColor) {
+            if (!hexColor || hexColor.length < 7) return 'var(--text-primary)';
+            const r = parseInt(hexColor.substr(1, 2), 16);
+            const g = parseInt(hexColor.substr(3, 2), 16);
+            const b = parseInt(hexColor.substr(5, 2), 16);
+            const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+            return (yiq >= 128) ? '#111827' : 'var(--text-primary)';
+        }
+
         function getColumnCount(sliderValue) {
-            const value = parseInt(sliderValue);
-            // Non-linear mapping: slider left (small value) = more columns (small buttons)
-            // slider right (large value) = fewer columns (large buttons)
-            if (value <= 50) {
-                // Map slider range 1-50 to column range 16-8
-                return Math.round(16 - ((value - 1) / 49) * 8);
-            } else {
-                // Map slider range 51-100 to column range 7-1
-                return Math.round(8 - ((value - 50) / 50) * 7);
-            }
+            const value = 101 - parseInt(sliderValue);
+            // Map slider range 1-100 to column range 1-16
+            return Math.ceil( (value / 100) * 15) + 1;
         }
 
         function renderSoundboard(filteredData = null) {
@@ -478,25 +493,21 @@
             if (columns >= 10) textSize = 'text-xs';
             if (columns >= 14) textSize = 'text-[10px] leading-tight';
 
-            let iconSize = 'text-2xl';
-            if (columns >= 12) iconSize = 'text-xl';
-            if (columns >= 15) iconSize = 'text-lg';
+            const textColor = sound.textColor || getTextColorForBg(sound.color);
 
-            soundBtn.className = `sound-btn text-white font-semibold py-2 px-1 flex flex-col items-center justify-center text-center aspect-square draggable ${buttonShape}`;
+            soundBtn.className = `sound-btn font-semibold py-2 px-1 flex items-center justify-center text-center aspect-square draggable ${buttonShape}`;
             soundBtn.dataset.url = sound.url;
             soundBtn.dataset.id = sound.id;
             soundBtn.dataset.sectionId = sectionId;
             soundBtn.style.backgroundColor = sound.color || 'var(--surface-color)';
+            soundBtn.style.color = textColor;
 
             soundBtn.innerHTML = `
-                <div class="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity edit-overlay hidden items-center justify-center gap-2 text-white text-xs">
-                    <span class="edit-item-btn cursor-pointer p-1 rounded-full hover:bg-white/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Edit Sound"><i class="fas fa-pencil-alt"></i></span>
-                    <span class="delete-item-btn cursor-pointer p-1 rounded-full hover:bg-white/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Delete Sound"><i class="fas fa-trash"></i></span>
+                <div class="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity edit-overlay hidden items-center justify-center gap-2 text-xs" style="color: ${textColor}">
+                    <span class="edit-item-btn cursor-pointer p-1 rounded-full hover:bg-black/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Edit Sound"><i class="fas fa-pencil-alt"></i></span>
+                    <span class="delete-item-btn cursor-pointer p-1 rounded-full hover:bg-black/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Delete Sound"><i class="fas fa-trash"></i></span>
                 </div>
-                <div class="flex flex-col items-center justify-center gap-2 pointer-events-none">
-                    <i class="fas fa-music ${iconSize} text-white/60"></i>
-                    <span class="${textSize} break-words">${sound.name}</span>
-                </div>`;
+                <span class="${textSize} break-words pointer-events-none">${sound.name}</span>`;
             return soundBtn;
         }
 
@@ -517,7 +528,7 @@
                 }
             } else {
                 const soundBtn = e.target.closest('.sound-btn');
-                if (soundBtn) playSound(soundBtn.dataset.url, soundBtn.querySelector('.fa-music'));
+                if (soundBtn) playSound(soundBtn.dataset.url);
             }
         });
         
@@ -543,9 +554,13 @@
             document.getElementById('edit-actions').style.display = isEditMode ? 'flex' : 'none';
             document.body.classList.toggle('edit-mode-active', isEditMode);
             
-            boardTitle.style.display = isEditMode ? 'none' : 'block';
-            boardTitleInput.style.display = isEditMode ? 'block' : 'none';
-            if(isEditMode) boardTitleInput.style.width = `${boardTitle.offsetWidth}px`;
+            boardTitle.classList.toggle('hidden', isEditMode);
+            boardTitleInput.classList.toggle('hidden', !isEditMode);
+            
+            if(isEditMode) {
+                boardTitleInput.style.width = `${boardTitle.offsetWidth}px`;
+                boardTitleInput.focus();
+            }
 
             document.querySelectorAll('.draggable, .draggable-section').forEach(el => el.setAttribute('draggable', isEditMode));
             document.querySelectorAll('.add-sound-btn').forEach(btn => btn.style.display = isEditMode ? 'flex' : 'none');
@@ -557,7 +572,9 @@
             renderSoundboard();
         });
         buttonSizeInput.addEventListener('input', () => {
-            buttonSizeSlider.value = buttonSizeInput.value;
+            const val = Math.max(1, Math.min(100, parseInt(buttonSizeInput.value) || 1));
+            buttonSizeSlider.value = val;
+            buttonSizeInput.value = val;
             renderSoundboard();
         });
         buttonSizeSlider.addEventListener('change', saveButtonSize);
@@ -570,6 +587,8 @@
         });
         boardTitleInput.addEventListener('change', saveData);
         
+        stopSoundBtn.addEventListener('click', stopSound);
+
         // --- Modal Logic ---
         function openModal(type, mode, data) {
             modalForm.reset();
@@ -578,11 +597,10 @@
             document.getElementById('editType').value = type;
             document.getElementById('editSectionId').value = sectionId;
 
-            ['form-group-url', 'form-group-color', 'form-group-width', 'form-group-bulk-color'].forEach(id => document.getElementById(id).style.display = 'none');
+            ['form-group-url', 'form-group-color', 'form-group-width', 'form-group-bulk-color', 'form-group-text-color', 'form-group-bulk-text-color'].forEach(id => document.getElementById(id).style.display = 'none');
 
             if (type === 'section') {
-                document.getElementById('form-group-width').style.display = 'block';
-                document.getElementById('form-group-bulk-color').style.display = 'block';
+                ['form-group-width', 'form-group-bulk-color', 'form-group-bulk-text-color'].forEach(id => document.getElementById(id).parentElement.style.display = 'block');
                 document.getElementById('modalTitle').textContent = mode === 'add' ? 'Add New Section' : 'Edit Section';
                 if (mode === 'edit') {
                     const section = boardData.sections.find(s => s.id === id);
@@ -592,7 +610,7 @@
                     document.getElementById('itemWidth').value = 4;
                 }
             } else { // 'sound'
-                 ['form-group-url', 'form-group-color'].forEach(id => document.getElementById(id).style.display = 'block');
+                 ['form-group-url', 'form-group-color', 'form-group-text-color'].forEach(id => document.getElementById(id).parentElement.style.display = 'block');
                 document.getElementById('modalTitle').textContent = mode === 'add' ? 'Add New Sound' : 'Edit Sound';
                  if (mode === 'edit') {
                     const section = boardData.sections.find(s => s.id === sectionId);
@@ -600,8 +618,10 @@
                     document.getElementById('itemName').value = sound.name;
                     document.getElementById('itemUrl').value = sound.url;
                     document.getElementById('itemColor').value = sound.color || '#1f2937';
+                    document.getElementById('itemTextColor').value = sound.textColor || '#f9fafb';
                 } else {
                     document.getElementById('itemColor').value = '#1f2937';
+                    document.getElementById('itemTextColor').value = '#f9fafb';
                 }
             }
             modal.classList.remove('hidden');
@@ -632,12 +652,16 @@
             if (type === 'section') {
                 const width = document.getElementById('itemWidth').value;
                 const bulkColor = document.getElementById('itemBulkColor').value;
+                const bulkTextColor = document.getElementById('itemBulkTextColor').value;
                 if (id) {
                     const section = boardData.sections.find(s => s.id === id);
                     if(section) {
                         section.title = name;
                         section.width = width;
-                        (section.sounds || []).forEach(sound => sound.color = bulkColor);
+                        (section.sounds || []).forEach(sound => {
+                            sound.color = bulkColor;
+                            sound.textColor = bulkTextColor;
+                        });
                     }
                 } else {
                     boardData.sections.push({ id: `section-${Date.now()}`, title: name, width: width, sounds: [] });
@@ -645,16 +669,17 @@
             } else { // sound
                 const url = urlInput.value;
                 const color = document.getElementById('itemColor').value;
+                const textColor = document.getElementById('itemTextColor').value;
                 const sectionId = document.getElementById('editSectionId').value;
                 const section = boardData.sections.find(s => s.id === sectionId);
                 if (!section) { showNotification('Error: Section not found!', 'error'); return; }
 
                 if (id) { // Editing existing sound
                     const sound = section.sounds.find(snd => snd.id === id);
-                    if (sound) { sound.name = name; sound.url = url; sound.color = color; }
+                    if (sound) { Object.assign(sound, { name, url, color, textColor }); }
                 } else { // Adding new sound
                     if (!section.sounds) section.sounds = [];
-                    section.sounds.push({ id: `sound-${Date.now()}`, name, url, color });
+                    section.sounds.push({ id: `sound-${Date.now()}`, name, url, color, textColor });
                 }
             }
             saveData();
@@ -847,7 +872,7 @@
         librarySoundList.addEventListener('click', e => {
             const previewBtn = e.target.closest('.preview-lib-sound-btn');
             if (previewBtn) {
-                playSound(previewBtn.dataset.url, previewBtn);
+                playSound(previewBtn.dataset.url);
             }
         });
         
@@ -920,6 +945,7 @@
                 boardData.settings.theme[cssVar] = color;
                 document.documentElement.style.setProperty(cssVar, color);
                 boardIcon.style.color = boardData.settings.theme['--primary-color'];
+                stopSoundBtn.style.backgroundColor = boardData.settings.theme['--primary-color'].replace('600', '700');
             }
             if(e.target.name === 'buttonShape') {
                 boardData.settings.buttonShape = e.target.value;
