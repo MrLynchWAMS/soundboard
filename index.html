@@ -32,6 +32,7 @@
             box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
             position: relative;
             overflow: hidden;
+            cursor: pointer;
         }
         .sound-btn:hover {
             transform: translateY(-2px);
@@ -41,7 +42,7 @@
         .sound-btn:active {
             transform: scale(0.98);
         }
-        .draggable { cursor: move; }
+        .draggable[draggable="true"] { cursor: move; }
         .dragging { opacity: 0.5; transform: scale(0.95); }
         .drag-over {
             box-shadow: inset 0 0 0 2px var(--primary-color);
@@ -424,7 +425,7 @@
                 return Math.round(16 - ((value - 1) / 49) * 8);
             } else {
                 // Map slider range 51-100 to column range 7-1
-                return Math.round(7 - ((value - 51) / 49) * 6);
+                return Math.round(8 - ((value - 50) / 50) * 7);
             }
         }
 
@@ -434,7 +435,6 @@
             document.getElementById('empty-state').style.display = (sectionsToRender.length === 0 && !filteredData) ? 'block' : 'none';
 
             const columns = getColumnCount(buttonSizeSlider.value);
-            const buttonGridCols = `grid-cols-${columns}`;
 
             sectionsToRender.forEach(section => {
                 const sectionEl = document.createElement('div');
@@ -451,9 +451,11 @@
                             <span class="drag-handle cursor-move" title="Drag Section"><i class="fas fa-grip-vertical"></i></span>
                         </div>
                     </div>
-                    <div class="grid ${buttonGridCols} gap-3 sound-container"></div>`;
+                    <div class="grid gap-3 sound-container"></div>`;
 
                 const soundContainer = sectionEl.querySelector('.sound-container');
+                soundContainer.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+
                 (section.sounds || []).forEach(sound => soundContainer.appendChild(createSoundButton(sound, section.id)));
                 
                 const addSoundBtn = document.createElement('button');
@@ -473,23 +475,27 @@
             const columns = getColumnCount(buttonSizeSlider.value);
             
             let textSize = 'text-sm';
-            if (columns > 10) textSize = 'text-xs';
-            if (columns > 13) textSize = 'text-[10px]';
+            if (columns >= 10) textSize = 'text-xs';
+            if (columns >= 14) textSize = 'text-[10px] leading-tight';
 
-            soundBtn.className = `sound-btn text-white font-semibold py-3 px-2 flex flex-col items-center justify-center text-center aspect-square draggable ${buttonShape}`;
+            let iconSize = 'text-2xl';
+            if (columns >= 12) iconSize = 'text-xl';
+            if (columns >= 15) iconSize = 'text-lg';
+
+            soundBtn.className = `sound-btn text-white font-semibold py-2 px-1 flex flex-col items-center justify-center text-center aspect-square draggable ${buttonShape}`;
             soundBtn.dataset.url = sound.url;
             soundBtn.dataset.id = sound.id;
             soundBtn.dataset.sectionId = sectionId;
             soundBtn.style.backgroundColor = sound.color || 'var(--surface-color)';
 
             soundBtn.innerHTML = `
-                <div class="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity edit-overlay hidden items-center justify-center gap-3 text-white">
-                    <span class="edit-item-btn cursor-pointer p-2 rounded-full hover:bg-white/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Edit Sound"><i class="fas fa-pencil-alt"></i></span>
-                    <span class="delete-item-btn cursor-pointer p-2 rounded-full hover:bg-white/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Delete Sound"><i class="fas fa-trash"></i></span>
+                <div class="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity edit-overlay hidden items-center justify-center gap-2 text-white text-xs">
+                    <span class="edit-item-btn cursor-pointer p-1 rounded-full hover:bg-white/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Edit Sound"><i class="fas fa-pencil-alt"></i></span>
+                    <span class="delete-item-btn cursor-pointer p-1 rounded-full hover:bg-white/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Delete Sound"><i class="fas fa-trash"></i></span>
                 </div>
                 <div class="flex flex-col items-center justify-center gap-2 pointer-events-none">
-                    <i class="fas fa-music text-2xl text-white/60"></i>
-                    <span class="${textSize} break-words leading-tight">${sound.name}</span>
+                    <i class="fas fa-music ${iconSize} text-white/60"></i>
+                    <span class="${textSize} break-words">${sound.name}</span>
                 </div>`;
             return soundBtn;
         }
@@ -521,7 +527,7 @@
             
             const filteredSections = JSON.parse(JSON.stringify(boardData.sections))
                 .map(section => {
-                    section.sounds = section.sounds.filter(sound => sound.name.toLowerCase().includes(searchTerm));
+                    section.sounds = (section.sounds || []).filter(sound => sound.name.toLowerCase().includes(searchTerm));
                     return section;
                 }).filter(section => section.sounds.length > 0);
             renderSoundboard(filteredSections);
@@ -631,7 +637,7 @@
                     if(section) {
                         section.title = name;
                         section.width = width;
-                        section.sounds.forEach(sound => sound.color = bulkColor);
+                        (section.sounds || []).forEach(sound => sound.color = bulkColor);
                     }
                 } else {
                     boardData.sections.push({ id: `section-${Date.now()}`, title: name, width: width, sounds: [] });
@@ -647,6 +653,7 @@
                     const sound = section.sounds.find(snd => snd.id === id);
                     if (sound) { sound.name = name; sound.url = url; sound.color = color; }
                 } else { // Adding new sound
+                    if (!section.sounds) section.sounds = [];
                     section.sounds.push({ id: `sound-${Date.now()}`, name, url, color });
                 }
             }
