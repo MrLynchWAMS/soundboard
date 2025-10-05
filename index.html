@@ -90,7 +90,6 @@
                 <div class="flex items-center gap-3">
                     <i id="board-icon" class="fas fa-compact-disc text-blue-400 text-2xl md:text-3xl"></i>
                     <h1 id="board-title" class="text-2xl md:text-3xl font-bold text-white">My Soundboard</h1>
-                    <input type="text" id="board-title-input" class="hidden text-2xl md:text-3xl font-bold bg-transparent border-b-2 border-blue-500 focus:outline-none w-full sm:w-auto">
                 </div>
                 <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
                     <button id="stopSoundBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold p-2 rounded-lg h-10 w-10 flex items-center justify-center" title="Stop Sound">
@@ -112,6 +111,7 @@
             </div>
              <div id="edit-actions" class="hidden flex-wrap items-center justify-center sm:justify-start gap-4 mt-4 pt-4 border-t border-gray-700">
                 <button id="addSectionBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-plus"></i> Add Section</button>
+                <button id="editTitleBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-signature"></i> Edit Title</button>
                 <button id="libraryBtn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-book"></i> Sound Library</button>
                 <button id="appearanceBtn" class="bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-paint-brush"></i> Appearance</button>
                 <button id="shareBtn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-share-alt"></i> Share</button>
@@ -178,6 +178,22 @@
                 </div>
                 <div class="flex justify-end gap-3 mt-8">
                     <button type="button" id="cancelBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Cancel</button>
+                    <button type="submit" class="bg-primary-color hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="titleModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-sm m-4 border border-border-color modal">
+            <h2 class="text-2xl font-bold mb-6">Edit Soundboard Name</h2>
+            <form id="titleModalForm">
+                <div class="mb-4">
+                    <label for="newBoardTitle" class="block text-sm font-medium text-text-secondary mb-1">Soundboard Name</label>
+                    <input type="text" id="newBoardTitle" class="w-full bg-gray-900/50 border border-border-color text-text-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-color" required>
+                </div>
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" id="titleCancelBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Cancel</button>
                     <button type="submit" class="bg-primary-color hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg">Save</button>
                 </div>
             </form>
@@ -280,7 +296,6 @@
         const buttonSizeSlider = document.getElementById('buttonSizeSlider');
         const buttonSizeInput = document.getElementById('buttonSizeInput');
         const boardTitle = document.getElementById('board-title');
-        const boardTitleInput = document.getElementById('board-title-input');
         const boardIcon = document.getElementById('board-icon');
         const stopSoundBtn = document.getElementById('stopSoundBtn');
         
@@ -293,9 +308,13 @@
         const libraryModal = document.getElementById('libraryModal');
         const librarySoundList = document.getElementById('library-sound-list');
         const appearanceModal = document.getElementById('appearanceModal');
+        const titleModal = document.getElementById('titleModal');
+        const titleModalForm = document.getElementById('titleModalForm');
+        const titleCancelBtn = document.getElementById('titleCancelBtn');
         
         // Buttons
         const addSectionBtn = document.getElementById('addSectionBtn');
+        const editTitleBtn = document.getElementById('editTitleBtn');
         const libraryBtn = document.getElementById('libraryBtn');
         const appearanceBtn = document.getElementById('appearanceBtn');
         const exportBtn = document.getElementById('exportBtn');
@@ -367,7 +386,6 @@
             const settings = boardData.settings;
             boardTitle.textContent = settings.title;
             document.title = settings.title;
-            boardTitleInput.value = settings.title;
             Object.entries(settings.theme).forEach(([key, value]) => {
                 document.documentElement.style.setProperty(key, value);
             });
@@ -554,14 +572,6 @@
             document.getElementById('edit-actions').style.display = isEditMode ? 'flex' : 'none';
             document.body.classList.toggle('edit-mode-active', isEditMode);
             
-            boardTitle.classList.toggle('hidden', isEditMode);
-            boardTitleInput.classList.toggle('hidden', !isEditMode);
-            
-            if(isEditMode) {
-                boardTitleInput.style.width = `${boardTitle.offsetWidth}px`;
-                boardTitleInput.focus();
-            }
-
             document.querySelectorAll('.draggable, .draggable-section').forEach(el => el.setAttribute('draggable', isEditMode));
             document.querySelectorAll('.add-sound-btn').forEach(btn => btn.style.display = isEditMode ? 'flex' : 'none');
             document.querySelectorAll('.edit-controls').forEach(el => el.style.display = isEditMode ? 'flex' : 'none');
@@ -579,13 +589,6 @@
         });
         buttonSizeSlider.addEventListener('change', saveButtonSize);
         buttonSizeInput.addEventListener('change', saveButtonSize);
-
-        boardTitleInput.addEventListener('input', () => {
-            boardData.settings.title = boardTitleInput.value || "My Soundboard";
-            boardTitle.textContent = boardData.settings.title;
-            document.title = boardData.settings.title;
-        });
-        boardTitleInput.addEventListener('change', saveData);
         
         stopSoundBtn.addEventListener('click', stopSound);
 
@@ -597,10 +600,23 @@
             document.getElementById('editType').value = type;
             document.getElementById('editSectionId').value = sectionId;
 
-            ['form-group-url', 'form-group-color', 'form-group-width', 'form-group-bulk-color', 'form-group-text-color', 'form-group-bulk-text-color'].forEach(id => document.getElementById(id).style.display = 'none');
+            ['form-group-url', 'form-group-color', 'form-group-width', 'form-group-bulk-color', 'form-group-text-color', 'form-group-bulk-text-color'].forEach(id => {
+                const group = document.getElementById(id);
+                group.style.display = 'none';
+                if (group.parentElement.classList.contains('grid')) {
+                    // Part of a grid, don't hide parent
+                } else {
+                     group.parentElement.style.display = 'none';
+                }
+            });
+
 
             if (type === 'section') {
-                ['form-group-width', 'form-group-bulk-color', 'form-group-bulk-text-color'].forEach(id => document.getElementById(id).parentElement.style.display = 'block');
+                ['form-group-width', 'form-group-bulk-color', 'form-group-bulk-text-color'].forEach(id => {
+                    const el = document.getElementById(id);
+                    el.style.display = 'block';
+                    el.parentElement.style.display = 'block';
+                });
                 document.getElementById('modalTitle').textContent = mode === 'add' ? 'Add New Section' : 'Edit Section';
                 if (mode === 'edit') {
                     const section = boardData.sections.find(s => s.id === id);
@@ -610,7 +626,11 @@
                     document.getElementById('itemWidth').value = 4;
                 }
             } else { // 'sound'
-                 ['form-group-url', 'form-group-color', 'form-group-text-color'].forEach(id => document.getElementById(id).parentElement.style.display = 'block');
+                 ['form-group-url', 'form-group-color', 'form-group-text-color'].forEach(id => {
+                    const el = document.getElementById(id);
+                    el.style.display = 'block';
+                    el.parentElement.style.display = 'block';
+                 });
                 document.getElementById('modalTitle').textContent = mode === 'add' ? 'Add New Sound' : 'Edit Sound';
                  if (mode === 'edit') {
                     const section = boardData.sections.find(s => s.id === sectionId);
@@ -618,7 +638,7 @@
                     document.getElementById('itemName').value = sound.name;
                     document.getElementById('itemUrl').value = sound.url;
                     document.getElementById('itemColor').value = sound.color || '#1f2937';
-                    document.getElementById('itemTextColor').value = sound.textColor || '#f9fafb';
+                    document.getElementById('itemTextColor').value = sound.textColor || getTextColorForBg(sound.color);
                 } else {
                     document.getElementById('itemColor').value = '#1f2937';
                     document.getElementById('itemTextColor').value = '#f9fafb';
@@ -633,6 +653,7 @@
             confirmModal.classList.add('hidden');
             shareModal.classList.add('hidden');
             libraryModal.classList.add('hidden');
+            titleModal.classList.add('hidden');
         }
 
         modalForm.addEventListener('submit', (e) => {
@@ -688,8 +709,27 @@
             showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} saved successfully!`);
         });
 
-        [cancelBtn, appearanceCloseBtn, shareCloseBtn, libraryCancelBtn].forEach(btn => btn.addEventListener('click', closeModal));
+        [cancelBtn, appearanceCloseBtn, shareCloseBtn, libraryCancelBtn, titleCancelBtn].forEach(btn => btn.addEventListener('click', closeModal));
         addSectionBtn.addEventListener('click', () => openModal('section', 'add', {}));
+
+        editTitleBtn.addEventListener('click', () => {
+            document.getElementById('newBoardTitle').value = boardData.settings.title;
+            titleModal.classList.remove('hidden');
+        });
+
+        titleModalForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newTitle = document.getElementById('newBoardTitle').value.trim();
+            if (newTitle) {
+                boardData.settings.title = newTitle;
+                saveData();
+                applySettings();
+                closeModal();
+                showNotification('Soundboard name updated!');
+            } else {
+                showNotification('Name cannot be empty.', 'error');
+            }
+        });
 
         // --- Confirmation Modal ---
         function openConfirmModal(actionText, onConfirm) {
