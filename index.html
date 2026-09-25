@@ -1,1015 +1,649 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customizable Soundboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Compression library for URL sharing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-    <style>
-        :root {
-            --background-color: #111827; /* gray-900 */
-            --surface-color: #1f2937;    /* gray-800 */
-            --primary-color: #3b82f6;   /* blue-500 */
-            --primary-hover: #2563eb;   /* blue-600 */
-            --text-primary: #f9fafb;     /* gray-50 */
-            --text-secondary: #9ca3af;   /* gray-400 */
-            --border-color: #374151;     /* gray-700 */
-        }
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-        body {
-            background-color: var(--background-color);
-            color: var(--text-primary);
-            font-family: 'Roboto', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        .sound-btn {
-            background-color: var(--surface-color);
-            border: 1px solid var(--border-color);
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-        }
-        .sound-btn:hover {
-            transform: translateY(-2px);
-            border-color: #4b5563; /* gray-600 */
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
-        }
-        .sound-btn:active {
-            transform: scale(0.98);
-        }
-        .draggable[draggable="true"] { cursor: move; }
-        .dragging { opacity: 0.5; transform: scale(0.95); }
-        .drag-over {
-            box-shadow: inset 0 0 0 2px var(--primary-color);
-        }
-        .edit-mode .sound-btn .edit-overlay {
-            display: flex;
-        }
-        .modal, .notification-toast {
-            animation: fadeIn 0.3s ease-out;
-        }
-        .modal-backdrop { background-color: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .spinner {
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top: 2px solid var(--text-primary);
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        #soundboard-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1.5rem;
-        }
-        #library-sound-list { max-height: 400px; }
-    </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Soundboard</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --danger: #ef4444;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #111827;
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    h1 { font-size: 1.5rem; font-weight: 700; color: #f43f5e; display: flex; align-items: center; gap: 0.5rem; }
+
+    .header-controls { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+
+    input, select, button {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.5rem 0.85rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    input:focus, select:focus { border-color: var(--accent); }
+
+    button {
+      background-color: var(--accent);
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    button:hover { background-color: var(--accent-hover); }
+    button.secondary { background-color: var(--card-bg); border: 1px solid var(--border); }
+    button.secondary:hover { background-color: #334155; }
+    button.danger { background-color: var(--danger); }
+
+    .container { padding: 1.5rem 2rem; flex: 1; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+    /* Tag Bar */
+    .tag-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center; }
+    .tag-pill {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      user-select: none;
+    }
+    .tag-pill.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    /* Sound Grid */
+    .sound-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 1.25rem;
+    }
+
+    /* Sound Card */
+    .sound-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      cursor: grab;
+    }
+
+    .sound-card:active { cursor: grabbing; }
+    .sound-card.dragging { opacity: 0.4; border: 2px dashed var(--accent); }
+    .sound-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.3); }
+
+    /* Sound Button */
+    .btn-trigger {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,0.3), 0 4px 10px rgba(0,0,0,0.3);
+      position: relative;
+      margin-bottom: 0.75rem;
+      transition: transform 0.05s ease, box-shadow 0.05s ease;
+    }
+
+    .btn-trigger:active {
+      transform: translateY(2px);
+      box-shadow: inset 0 -1px 0 rgba(0,0,0,0.3), 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    .btn-trigger.playing {
+      animation: pulse 0.8s infinite alternate;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0px rgba(99, 102, 241, 0.7); }
+      100% { box-shadow: 0 0 0 12px rgba(99, 102, 241, 0); }
+    }
+
+    .sound-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+      word-break: break-word;
+    }
+
+    .card-tags {
+      display: flex;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .mini-tag {
+      font-size: 0.65rem;
+      background: rgba(255,255,255,0.06);
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      color: var(--text-muted);
+    }
+
+    .card-actions {
+      position: absolute;
+      top: 0.4rem;
+      right: 0.4rem;
+      display: none;
+      gap: 0.2rem;
+    }
+
+    .sound-card:hover .card-actions { display: flex; }
+
+    .btn-icon {
+      background: rgba(15, 23, 42, 0.8);
+      border: none;
+      color: var(--text-muted);
+      width: 22px;
+      height: 22px;
+      border-radius: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      padding: 0;
+    }
+
+    .btn-icon:hover { color: white; background: var(--border); }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+
+    .modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .modal h2 { font-size: 1.2rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+    .form-group label { font-size: 0.8rem; color: var(--text-muted); }
+
+    textarea {
+      background: var(--bg-color);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      height: 120px;
+      resize: vertical;
+    }
+  </style>
 </head>
-<body class="antialiased">
+<body>
 
-    <!-- Main Container -->
-    <div class="container mx-auto p-4 md:p-6 lg:p-8 max-w-screen-2xl">
-
-        <!-- Header -->
-        <header class="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 mb-6 sticky top-4 z-20 border border-gray-700/50">
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <i id="board-icon" class="fas fa-compact-disc text-blue-400 text-2xl md:text-3xl"></i>
-                    <h1 id="board-title" class="text-2xl md:text-3xl font-bold text-white">My Soundboard</h1>
-                </div>
-                <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
-                    <button id="stopSoundBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold p-2 rounded-lg h-10 w-10 flex items-center justify-center" title="Stop Sound">
-                        <i class="fas fa-stop"></i>
-                    </button>
-                    <div class="relative w-full sm:w-64">
-                        <input type="text" id="searchInput" placeholder="Search sounds..." class="w-full bg-gray-900/50 text-white rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <i class="fas fa-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                    </div>
-                     <label for="editModeToggle" class="flex items-center cursor-pointer select-none p-2 rounded-lg hover:bg-gray-700">
-                        <span class="mr-3 text-sm font-medium">Edit Mode</span>
-                        <div class="relative">
-                            <input type="checkbox" id="editModeToggle" class="sr-only peer">
-                            <div class="block bg-gray-600 w-14 h-8 rounded-full peer-checked:bg-blue-600 transition"></div>
-                            <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform transform peer-checked:translate-x-6"></div>
-                        </div>
-                    </label>
-                </div>
-            </div>
-             <div id="edit-actions" class="hidden flex-wrap items-center justify-center sm:justify-start gap-4 mt-4 pt-4 border-t border-gray-700">
-                <button id="addSectionBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-plus"></i> Add Section</button>
-                <button id="editTitleBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-signature"></i> Edit Title</button>
-                <button id="libraryBtn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-book"></i> Sound Library</button>
-                <button id="appearanceBtn" class="bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-paint-brush"></i> Appearance</button>
-                <button id="shareBtn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-share-alt"></i> Share</button>
-                <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-file-export"></i> Export</button>
-                <button onclick="document.getElementById('importInput').click()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm"><i class="fas fa-file-import"></i> Import</button>
-                <input type="file" id="importInput" class="hidden" accept=".json">
-                 <div class="flex items-center gap-2 text-sm ml-auto">
-                    <label for="buttonSizeSlider" class="font-medium">Button Size</label>
-                    <input type="range" id="buttonSizeSlider" min="1" max="100" value="50" class="w-32 cursor-pointer">
-                    <input type="number" id="buttonSizeInput" min="1" max="100" class="w-16 bg-gray-900/50 text-white rounded-lg px-2 py-1 border border-gray-700 text-center">
-                </div>
-            </div>
-        </header>
-
-        <!-- Soundboard Grid -->
-        <main id="soundboard-grid">
-            <!-- Sections will be dynamically inserted here -->
-        </main>
-        
-        <div id="empty-state" class="hidden text-center p-10 bg-gray-800 rounded-lg border-2 border-dashed border-gray-700">
-            <h2 class="text-2xl font-bold mb-2">Welcome to your soundboard!</h2>
-            <p class="text-gray-400 mb-4">It's empty here. Turn on "Edit Mode" to add sections and sounds.</p>
-            <i class="fas fa-hand-pointer fa-2x text-blue-400 animate-bounce"></i>
-        </div>
+  <header>
+    <h1>🔊 Instant Board</h1>
+    <div class="header-controls">
+      <input type="text" id="searchInput" placeholder="Search sounds or tags...">
+      <select id="sortSelect">
+        <option value="manual">Sort: Manual (Drag & Drop)</option>
+        <option value="az">Sort: Alphabetical (A-Z)</option>
+        <option value="za">Sort: Alphabetical (Z-A)</option>
+        <option value="newest">Sort: Date Added</option>
+      </select>
+      <button onclick="stopAllSounds()" class="secondary">⏹️ Stop All</button>
+      <button onclick="openModal('addModal')">+ Add Sound</button>
+      <button onclick="openModal('importModal')" class="secondary">📥 Import HTML</button>
+      <button onclick="exportJSON()" class="secondary">💾 Export JSON</button>
     </div>
+  </header>
 
-    <!-- Modals -->
-    <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-md m-4 border border-border-color modal">
-            <h2 id="modalTitle" class="text-2xl font-bold mb-6">Modal Title</h2>
-            <form id="modalForm" novalidate>
-                <input type="hidden" id="editId"><input type="hidden" id="editType"><input type="hidden" id="editSectionId">
-                <div id="form-group-name" class="mb-4">
-                    <label for="itemName" class="block text-sm font-medium text-text-secondary mb-1">Name</label>
-                    <input type="text" id="itemName" class="w-full bg-gray-900/50 border border-border-color text-text-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-color" required>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div id="form-group-bulk-color" class="mb-4">
-                         <label for="itemBulkColor" class="block text-sm font-medium text-text-secondary mb-1">Set All Button Colors</label>
-                        <input type="color" id="itemBulkColor" class="w-full h-10 bg-transparent rounded-lg p-0 border-0 cursor-pointer" value="#374151">
-                    </div>
-                     <div id="form-group-bulk-text-color" class="mb-4">
-                        <label for="itemBulkTextColor" class="block text-sm font-medium text-text-secondary mb-1">Set All Text Colors</label>
-                        <input type="color" id="itemBulkTextColor" class="w-full h-10 bg-transparent rounded-lg p-0 border-0 cursor-pointer" value="#f9fafb">
-                    </div>
-                </div>
-                <div id="form-group-url" class="mb-4">
-                    <label for="itemUrl" class="block text-sm font-medium text-text-secondary mb-1">Audio URL</label>
-                    <input type="text" id="itemUrl" class="w-full bg-gray-900/50 border border-border-color text-text-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-color" placeholder="https://example.com/sound.mp3" required>
-                </div>
-                 <div id="form-group-width" class="mb-4">
-                    <label for="itemWidth" class="block text-sm font-medium text-text-secondary mb-1">Section Width</label>
-                    <input type="range" id="itemWidth" min="1" max="4" value="4" class="w-full">
-                </div>
-                 <div class="grid grid-cols-2 gap-4">
-                    <div id="form-group-color" class="mb-4">
-                        <label for="itemColor" class="block text-sm font-medium text-text-secondary mb-1">Button Color</label>
-                        <input type="color" id="itemColor" class="w-full h-10 bg-transparent rounded-lg p-0 border-0 cursor-pointer" value="#374151">
-                    </div>
-                    <div id="form-group-text-color" class="mb-4">
-                        <label for="itemTextColor" class="block text-sm font-medium text-text-secondary mb-1">Text Color</label>
-                        <input type="color" id="itemTextColor" class="w-full h-10 bg-transparent rounded-lg p-0 border-0 cursor-pointer" value="#f9fafb">
-                    </div>
-                </div>
-                <div class="flex justify-end gap-3 mt-8">
-                    <button type="button" id="cancelBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Cancel</button>
-                    <button type="submit" class="bg-primary-color hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg">Save</button>
-                </div>
-            </form>
-        </div>
+  <div class="container">
+    <div class="tag-bar" id="tagBar"></div>
+    <div class="sound-grid" id="soundGrid"></div>
+  </div>
+
+  <!-- Add Sound Modal -->
+  <div class="modal-overlay" id="addModal">
+    <div class="modal">
+      <h2>Add New Sound</h2>
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="addTitle" placeholder="e.g. Air Horn">
+      </div>
+      <div class="form-group">
+        <label>Sound Link / Direct MP3 URL</label>
+        <input type="text" id="addUrl" placeholder="https://www.myinstants.com/media/sounds/... or local file path">
+      </div>
+      <div class="form-group">
+        <label>Tags (comma separated)</label>
+        <input type="text" id="addTags" placeholder="e.g. Meme, Horn, Loud">
+      </div>
+      <div class="form-group">
+        <label>Button Color</label>
+        <input type="color" id="addColor" value="#ef4444" style="height:40px; padding:2px; cursor:pointer;">
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+        <button onclick="closeModal('addModal')" class="secondary">Cancel</button>
+        <button onclick="saveNewSound()">Add Sound</button>
+      </div>
     </div>
-    
-    <div id="titleModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-sm m-4 border border-border-color modal">
-            <h2 class="text-2xl font-bold mb-6">Edit Soundboard Name</h2>
-            <form id="titleModalForm">
-                <div class="mb-4">
-                    <label for="newBoardTitle" class="block text-sm font-medium text-text-secondary mb-1">Soundboard Name</label>
-                    <input type="text" id="newBoardTitle" class="w-full bg-gray-900/50 border border-border-color text-text-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-color" required>
-                </div>
-                <div class="flex justify-end gap-3 mt-8">
-                    <button type="button" id="titleCancelBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Cancel</button>
-                    <button type="submit" class="bg-primary-color hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg">Save</button>
-                </div>
-            </form>
-        </div>
+  </div>
+
+  <!-- Import HTML Modal -->
+  <div class="modal-overlay" id="importModal">
+    <div class="modal">
+      <h2>Import Myinstants Favorites</h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">
+        Paste the HTML code from your saved Myinstants Favorites page below, or drop the content:
+      </p>
+      <textarea id="importHtmlText" placeholder="Paste Myinstants HTML code here..."></textarea>
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+        <button onclick="closeModal('importModal')" class="secondary">Cancel</button>
+        <button onclick="processHTMLImport()">Import Sounds</button>
+      </div>
     </div>
+  </div>
 
-    <div id="appearanceModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-md m-4 border border-border-color modal">
-            <h2 class="text-2xl font-bold mb-6">Edit Appearance</h2>
-            <div class="space-y-6">
-                <div>
-                    <h3 class="text-lg font-medium mb-3">Color Scheme</h3>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="flex flex-col">
-                            <label for="bgColor" class="text-sm font-medium text-text-secondary mb-1">Background</label>
-                            <input type="color" id="bgColor" data-css-var="--background-color" class="w-full h-10 p-0 border-0 cursor-pointer rounded-lg">
-                        </div>
-                        <div class="flex flex-col">
-                            <label for="surfaceColor" class="text-sm font-medium text-text-secondary mb-1">Surface</label>
-                            <input type="color" id="surfaceColor" data-css-var="--surface-color" class="w-full h-10 p-0 border-0 cursor-pointer rounded-lg">
-                        </div>
-                        <div class="flex flex-col">
-                            <label for="primaryColor" class="text-sm font-medium text-text-secondary mb-1">Primary</label>
-                            <input type="color" id="primaryColor" data-css-var="--primary-color" class="w-full h-10 p-0 border-0 cursor-pointer rounded-lg">
-                        </div>
-                        <div class="flex flex-col">
-                            <label for="textColor" class="text-sm font-medium text-text-secondary mb-1">Text</label>
-                            <input type="color" id="textColor" data-css-var="--text-primary" class="w-full h-10 p-0 border-0 cursor-pointer rounded-lg">
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <h3 class="text-lg font-medium mb-3">Button Shape</h3>
-                    <div class="flex justify-around bg-gray-900/50 p-1 rounded-lg">
-                        <label class="px-4 py-2 text-sm rounded-md cursor-pointer transition w-full text-center"><input type="radio" name="buttonShape" value="rounded-none" class="sr-only"> Sharp</label>
-                        <label class="px-4 py-2 text-sm rounded-md cursor-pointer transition w-full text-center"><input type="radio" name="buttonShape" value="rounded-xl" class="sr-only"> Rounded</label>
-                        <label class="px-4 py-2 text-sm rounded-md cursor-pointer transition w-full text-center"><input type="radio" name="buttonShape" value="rounded-full" class="sr-only"> Pill</label>
-                    </div>
-                </div>
-            </div>
-            <div class="flex justify-end gap-3 mt-8">
-                 <button type="button" id="resetAppearanceBtn" class="bg-transparent hover:bg-gray-700 text-text-secondary font-bold py-2 px-4 rounded-lg text-sm">Reset to Default</button>
-                <button type="button" id="appearanceCloseBtn" class="bg-primary-color hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg">Done</button>
-            </div>
-        </div>
-    </div>
+  <script>
+    // Initial Favorites Dataset (Parsed from provided Myinstants file)
+    const defaultFavorites = [
+      { id: "1", title: "1 Minute Remaining", url: "https://www.myinstants.com/media/sounds/1-minute-remaining.mp3", tags: ["Imported"], color: "#07FFF7", dateAdded: 1 },
+      { id: "2", title: "10 second timer", url: "https://www.myinstants.com/media/sounds/10-second-timer.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 2 },
+      { id: "3", title: "3.2.1. Go", url: "https://www.myinstants.com/media/sounds/3-2-1-go.mp3", tags: ["Imported"], color: "#000000", dateAdded: 3 },
+      { id: "4", title: "5 Minutes Remaining", url: "https://www.myinstants.com/media/sounds/5-minutes-remaining.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 4 },
+      { id: "5", title: "5 Second Countdown", url: "https://www.myinstants.com/media/sounds/5-second-countdown.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 5 },
+      { id: "6", title: "Among us", url: "https://www.myinstants.com/media/sounds/among-us.mp3", tags: ["Imported"], color: "#8AFF1D", dateAdded: 6 },
+      { id: "7", title: "And Then", url: "https://www.myinstants.com/media/sounds/and-then.mp3", tags: ["Imported"], color: "#FFF797", dateAdded: 7 },
+      { id: "8", title: "And Thennnnn....", url: "https://www.myinstants.com/media/sounds/and-thennnnn.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 8 },
+      { id: "9", title: "Another One DJ Khaled", url: "https://www.myinstants.com/media/sounds/another-one-dj-khaled.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 9 },
+      { id: "10", title: "Applause", url: "https://www.myinstants.com/media/sounds/applause.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 10 },
+      { id: "11", title: "Back to work, back to work!", url: "https://www.myinstants.com/media/sounds/back-to-work-back-to-work.mp3", tags: ["Imported"], color: "#8BF0FF", dateAdded: 11 },
+      { id: "12", title: "bass drop sound effect", url: "https://www.myinstants.com/media/sounds/bass-drop-sound-effect.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 12 },
+      { id: "13", title: "Benny Hill", url: "https://www.myinstants.com/media/sounds/benny-hill.mp3", tags: ["Imported"], color: "#9900cc", dateAdded: 13 },
+      { id: "14", title: "Big Explosion", url: "https://www.myinstants.com/media/sounds/big-explosion.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 14 },
+      { id: "15", title: "Boat Horn", url: "https://www.myinstants.com/media/sounds/boat-horn.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 15 },
+      { id: "16", title: "BRUH", url: "https://www.myinstants.com/media/sounds/bruh.mp3", tags: ["Imported"], color: "#ffff33", dateAdded: 16 },
+      { id: "17", title: "Buzzer", url: "https://www.myinstants.com/media/sounds/buzzer.mp3", tags: ["Imported"], color: "#cc0099", dateAdded: 17 },
+      { id: "18", title: "Calm", url: "https://www.myinstants.com/media/sounds/calm.mp3", tags: ["Imported"], color: "#ff00ff", dateAdded: 18 },
+      { id: "19", title: "carol of the bells", url: "https://www.myinstants.com/media/sounds/carol-of-the-bells.mp3", tags: ["Imported"], color: "#00ccff", dateAdded: 19 },
+      { id: "20", title: "Charlie Brown Teacher", url: "https://www.myinstants.com/media/sounds/charlie-brown-teacher.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 20 },
+      { id: "21", title: "Circus Music", url: "https://www.myinstants.com/media/sounds/circus-music.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 21 },
+      { id: "22", title: "Clock Ticking", url: "https://www.myinstants.com/media/sounds/clock-ticking.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 22 },
+      { id: "23", title: "Coin Mario", url: "https://www.myinstants.com/media/sounds/coin-mario.mp3", tags: ["Imported"], color: "#ffff00", dateAdded: 23 },
+      { id: "24", title: "Countdown 20 sec", url: "https://www.myinstants.com/media/sounds/countdown-20-sec.mp3", tags: ["Imported"], color: "#FF3F3F", dateAdded: 24 },
+      { id: "25", title: "Crowd cheering and clapping", url: "https://www.myinstants.com/media/sounds/crowd-cheering-and-clapping.mp3", tags: ["Imported"], color: "#EAFF5F", dateAdded: 25 },
+      { id: "26", title: "Cuckoo Clock", url: "https://www.myinstants.com/media/sounds/cuckoo-clock.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 26 },
+      { id: "27", title: "DJ Airhorn", url: "https://www.myinstants.com/media/sounds/dj-airhorn.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 27 },
+      { id: "28", title: "Dj Khaled Right", url: "https://www.myinstants.com/media/sounds/dj-khaled-right.mp3", tags: ["Imported"], color: "#00ff66", dateAdded: 28 },
+      { id: "29", title: "DJ scratch", url: "https://www.myinstants.com/media/sounds/dj-scratch.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 29 },
+      { id: "30", title: "DJ Scratch sound efff", url: "https://www.myinstants.com/media/sounds/dj-scratch-sound-efff.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 30 },
+      { id: "31", title: "Dun dun duuun", url: "https://www.myinstants.com/media/sounds/dun-dun-duuun.mp3", tags: ["Imported"], color: "#cc0000", dateAdded: 31 },
+      { id: "32", title: "e-40 Yup", url: "https://www.myinstants.com/media/sounds/e-40-yup.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 32 },
+      { id: "33", title: "Explosion", url: "https://www.myinstants.com/media/sounds/explosion.mp3", tags: ["Imported"], color: "#ff3300", dateAdded: 33 },
+      { id: "34", title: "Facts", url: "https://www.myinstants.com/media/sounds/facts.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 34 },
+      { id: "35", title: "Family Feud YES Ding", url: "https://www.myinstants.com/media/sounds/family-feud-yes-ding.mp3", tags: ["Imported"], color: "#00A302", dateAdded: 35 },
+      { id: "36", title: "faster!!!!", url: "https://www.myinstants.com/media/sounds/faster.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 36 },
+      { id: "37", title: "Focus!", url: "https://www.myinstants.com/media/sounds/focus.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 37 },
+      { id: "38", title: "Frankly That's a Skill Issue", url: "https://www.myinstants.com/media/sounds/frankly-thats-a-skill-issue.mp3", tags: ["Imported"], color: "#F05FFF", dateAdded: 38 },
+      { id: "39", title: "guess who's back randomdudeman", url: "https://www.myinstants.com/media/sounds/guess-whos-back-randomdudeman.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 39 },
+      { id: "40", title: "Guess who's back, Shady's back", url: "https://www.myinstants.com/media/sounds/guess-whos-back-shadys-back.mp3", tags: ["Imported"], color: "#00FF00", dateAdded: 40 },
+      { id: "41", title: "Harder Better Faster Whopper", url: "https://www.myinstants.com/media/sounds/harder-better-faster-whopper.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 41 },
+      { id: "42", title: "I Can't Hear You!!", url: "https://www.myinstants.com/media/sounds/i-cant-hear-you.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 42 },
+      { id: "43", title: "I wanna be the very best", url: "https://www.myinstants.com/media/sounds/i-wanna-be-the-very-best.mp3", tags: ["Imported"], color: "#F8FF22", dateAdded: 43 },
+      { id: "44", title: "Its Friday", url: "https://www.myinstants.com/media/sounds/its-friday.mp3", tags: ["Imported"], color: "#E91FFF", dateAdded: 44 },
+      { id: "45", title: "Jeopardy", url: "https://www.myinstants.com/media/sounds/jeopardy.mp3", tags: ["Imported"], color: "#009900", dateAdded: 45 },
+      { id: "46", title: "Joke sound effect", url: "https://www.myinstants.com/media/sounds/joke-sound-effect.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 46 },
+      { id: "47", title: "Let's Go Dababy", url: "https://www.myinstants.com/media/sounds/lets-go-dababy.mp3", tags: ["Imported"], color: "#FFFF03", dateAdded: 47 },
+      { id: "48", title: "Let's go! low", url: "https://www.myinstants.com/media/sounds/lets-go-low.mp3", tags: ["Imported"], color: "#868686", dateAdded: 48 },
+      { id: "49", title: "lets get ready to rumbleee", url: "https://www.myinstants.com/media/sounds/lets-get-ready-to-rumbleee.mp3", tags: ["Imported"], color: "#00ff00", dateAdded: 49 },
+      { id: "50", title: "LETS GOOOO", url: "https://www.myinstants.com/media/sounds/lets-goooo.mp3", tags: ["Imported"], color: "#FF0E06", dateAdded: 50 },
+      { id: "51", title: "Lightsaber ON", url: "https://www.myinstants.com/media/sounds/lightsaber-on.mp3", tags: ["Imported"], color: "#0099ff", dateAdded: 51 },
+      { id: "52", title: "Lil Jon - Okaaay", url: "https://www.myinstants.com/media/sounds/lil-jon-okaaay.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 52 },
+      { id: "53", title: "Lil Jon - whaaat", url: "https://www.myinstants.com/media/sounds/lil-jon-whaaat.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 53 },
+      { id: "54", title: "Lil Jon - yeahaaheaah!", url: "https://www.myinstants.com/media/sounds/lil-jon-yeahaaheaah.mp3", tags: ["Imported"], color: "#00cc00", dateAdded: 54 },
+      { id: "55", title: "M. Bison - Of Course!", url: "https://www.myinstants.com/media/sounds/m-bison-of-course.mp3", tags: ["Imported"], color: "#ff0000", dateAdded: 55 },
+      { id: "56", title: "Man Beatboxing Meme", url: "https://www.myinstants.com/media/sounds/man-beatboxing-meme.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 56 },
+      { id: "57", title: "Mario 1 up", url: "https://www.myinstants.com/media/sounds/mario-1-up.mp3", tags: ["Imported"], color: "#00ff00", dateAdded: 57 },
+      { id: "58", title: "Mario 64 let's a go", url: "https://www.myinstants.com/media/sounds/mario-64-lets-a-go.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 58 },
+      { id: "59", title: "Mario Dies", url: "https://www.myinstants.com/media/sounds/mario-dies.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 59 },
+      { id: "60", title: "Mario Star Power", url: "https://www.myinstants.com/media/sounds/mario-star-power.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 60 },
+      { id: "61", title: "michael jackson HIHIHI", url: "https://www.myinstants.com/media/sounds/michael-jackson-hihihi.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 61 },
+      { id: "62", title: "MUSTARDDDDDDDD", url: "https://www.myinstants.com/media/sounds/mustardddddddd.mp3", tags: ["Imported"], color: "#ECD334", dateAdded: 62 },
+      { id: "63", title: "My heart will go on", url: "https://www.myinstants.com/media/sounds/my-heart-will-go-on.mp3", tags: ["Imported"], color: "#9900ff", dateAdded: 63 },
+      { id: "64", title: "Naruto Sad Song", url: "https://www.myinstants.com/media/sounds/naruto-sad-song.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 64 },
+      { id: "65", title: "nope.avi", url: "https://www.myinstants.com/media/sounds/nopeavi.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 65 },
+      { id: "66", title: "OH YEAH KOOL AID MAN", url: "https://www.myinstants.com/media/sounds/oh-yeah-kool-aid-man.mp3", tags: ["Imported"], color: "#E20000", dateAdded: 66 },
+      { id: "67", title: "One Eternity Later", url: "https://www.myinstants.com/media/sounds/one-eternity-later.mp3", tags: ["Imported"], color: "#3300cc", dateAdded: 67 },
+      { id: "68", title: "outro song", url: "https://www.myinstants.com/media/sounds/outro-song.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 68 },
+      { id: "69", title: "Pokemon-Level Up!", url: "https://www.myinstants.com/media/sounds/pokemon-level-up.mp3", tags: ["Imported"], color: "#00ffcc", dateAdded: 69 },
+      { id: "70", title: "Price is Right Fail Horn", url: "https://www.myinstants.com/media/sounds/price-is-right-fail-horn.mp3", tags: ["Imported"], color: "#ff0000", dateAdded: 70 },
+      { id: "71", title: "ROBLOX oof", url: "https://www.myinstants.com/media/sounds/roblox-oof.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 71 },
+      { id: "72", title: "sad trombone fail horn", url: "https://www.myinstants.com/media/sounds/sad-trombone-fail-horn.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 72 },
+      { id: "73", title: "Sad Violin (the meme one)", url: "https://www.myinstants.com/media/sounds/sad-violin-the-meme-one.mp3", tags: ["Imported"], color: "#00ff33", dateAdded: 73 },
+      { id: "74", title: "Science and Techmology", url: "https://www.myinstants.com/media/sounds/science-and-techmology.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 74 },
+      { id: "75", title: "She shoots, she scores!", url: "https://www.myinstants.com/media/sounds/she-shoots-she-scores.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 75 },
+      { id: "76", title: "Shhhh", url: "https://www.myinstants.com/media/sounds/shhhh.mp3", tags: ["Imported"], color: "#00ffff", dateAdded: 76 },
+      { id: "77", title: "Short Eye of the Tiger", url: "https://www.myinstants.com/media/sounds/short-eye-of-the-tiger.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 77 },
+      { id: "78", title: "Silencio bruno", url: "https://www.myinstants.com/media/sounds/silencio-bruno.mp3", tags: ["Imported"], color: "#00FF00", dateAdded: 78 },
+      { id: "79", title: "Silêncio!", url: "https://www.myinstants.com/media/sounds/silencio.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 79 },
+      { id: "80", title: "snd - Time's Up -Jeopardy", url: "https://www.myinstants.com/media/sounds/snd-times-up-jeopardy.mp3", tags: ["Imported"], color: "#FF8A23", dateAdded: 80 },
+      { id: "81", title: "Super Mario 64 here we go", url: "https://www.myinstants.com/media/sounds/super-mario-64-here-we-go.mp3", tags: ["Imported"], color: "#ff66ff", dateAdded: 81 },
+      { id: "82", title: "Super Mario Bros. Underground", url: "https://www.myinstants.com/media/sounds/super-mario-bros-underground.mp3", tags: ["Imported"], color: "#ff00ff", dateAdded: 82 },
+      { id: "83", title: "Super Mario Death", url: "https://www.myinstants.com/media/sounds/super-mario-death.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 83 },
+      { id: "84", title: "suspense rising", url: "https://www.myinstants.com/media/sounds/suspense-rising.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 84 },
+      { id: "85", title: "Taco Bell Bong", url: "https://www.myinstants.com/media/sounds/taco-bell-bong.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 85 },
+      { id: "86", title: "that was easy button", url: "https://www.myinstants.com/media/sounds/that-was-easy-button.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 86 },
+      { id: "87", title: "The Lion Sleeps Tonight (meme)", url: "https://www.myinstants.com/media/sounds/the-lion-sleeps-tonight-meme.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 87 },
+      { id: "88", title: "The Voice Buzzer", url: "https://www.myinstants.com/media/sounds/the-voice-buzzer.mp3", tags: ["Imported"], color: "#FF0000", dateAdded: 88 },
+      { id: "89", title: "Victory!", url: "https://www.myinstants.com/media/sounds/victory.mp3", tags: ["Imported"], color: "#66ffcc", dateAdded: 89 },
+      { id: "90", title: "WampWamp", url: "https://www.myinstants.com/media/sounds/wampwamp.mp3", tags: ["Imported"], color: "#1017FF", dateAdded: 90 }
+    ];
 
-    <div id="libraryModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-lg m-4 border border-border-color modal">
-            <h2 class="text-2xl font-bold mb-4">Sound Library</h2>
-            <p class="text-text-secondary mb-4 text-sm">Sounds from your GitHub repository. Select sounds to add them to a new section.</p>
-            <div id="library-sound-list" class="overflow-y-auto bg-gray-900/50 rounded-lg p-2 border border-border-color space-y-1">
-                <!-- Library sounds will be populated here -->
-            </div>
-            <div class="flex justify-between items-center mt-6">
-                 <button id="librarySelectAll" class="text-sm text-blue-400 hover:underline">Select All</button>
-                <div>
-                    <button id="libraryCancelBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Close</button>
-                    <button id="libraryAddBtn" class="bg-primary-color hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg">Add Selected</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div id="shareModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-lg m-4 border border-border-color modal">
-            <h2 class="text-2xl font-bold mb-4">Share Your Soundboard</h2>
-            <p class="text-text-secondary mb-4 text-sm">Copy this link to share your current layout. Anyone with the link will see your soundboard exactly as you've set it up.</p>
-            <div class="flex gap-2">
-                <input type="text" id="shareLinkInput" readonly class="w-full bg-gray-900/50 border border-border-color text-text-secondary rounded-lg px-3 py-2 focus:outline-none">
-                <button id="copyLinkBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2">
-                    <i class="fas fa-copy"></i> Copy
-                </button>
-            </div>
-             <div class="flex justify-end mt-6">
-                <button id="shareCloseBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Close</button>
-            </div>
-        </div>
-    </div>
+    let sounds = [];
+    let selectedTag = "All";
+    let activeAudio = {}; // track playing audio instances
+    let draggedIndex = null;
 
-    <div id="confirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-        <div class="bg-surface-color rounded-xl shadow-lg p-6 w-full max-w-sm m-4 border border-border-color modal">
-            <h2 id="confirmModalTitle" class="text-xl font-bold mb-2">Are you sure?</h2>
-            <p id="confirmModalText" class="text-text-secondary mb-6">This action cannot be undone.</p>
-            <div class="flex justify-end gap-3">
-                <button id="confirmCancelBtn" class="bg-transparent hover:bg-gray-700 text-text-primary font-bold py-2 px-4 rounded-lg">Cancel</button>
-                <button id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Yes, delete</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="notification-container" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // --- Element Declarations ---
-        const soundboardGrid = document.getElementById('soundboard-grid');
-        const searchInput = document.getElementById('searchInput');
-        const editModeToggle = document.getElementById('editModeToggle');
-        const buttonSizeSlider = document.getElementById('buttonSizeSlider');
-        const buttonSizeInput = document.getElementById('buttonSizeInput');
-        const boardTitle = document.getElementById('board-title');
-        const boardIcon = document.getElementById('board-icon');
-        const stopSoundBtn = document.getElementById('stopSoundBtn');
-        
-        // Modals & Forms
-        const modal = document.getElementById('modal');
-        const modalForm = document.getElementById('modalForm');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const confirmModal = document.getElementById('confirmModal');
-        const shareModal = document.getElementById('shareModal');
-        const libraryModal = document.getElementById('libraryModal');
-        const librarySoundList = document.getElementById('library-sound-list');
-        const appearanceModal = document.getElementById('appearanceModal');
-        const titleModal = document.getElementById('titleModal');
-        const titleModalForm = document.getElementById('titleModalForm');
-        const titleCancelBtn = document.getElementById('titleCancelBtn');
-        
-        // Buttons
-        const addSectionBtn = document.getElementById('addSectionBtn');
-        const editTitleBtn = document.getElementById('editTitleBtn');
-        const libraryBtn = document.getElementById('libraryBtn');
-        const appearanceBtn = document.getElementById('appearanceBtn');
-        const exportBtn = document.getElementById('exportBtn');
-        const importInput = document.getElementById('importInput');
-        const shareBtn = document.getElementById('shareBtn');
-        const copyLinkBtn = document.getElementById('copyLinkBtn');
-        const shareCloseBtn = document.getElementById('shareCloseBtn');
-        const appearanceCloseBtn = document.getElementById('appearanceCloseBtn');
-        const resetAppearanceBtn = document.getElementById('resetAppearanceBtn');
-        const libraryCancelBtn = document.getElementById('libraryCancelBtn');
-        const libraryAddBtn = document.getElementById('libraryAddBtn');
-        const librarySelectAll = document.getElementById('librarySelectAll');
-        
-        // --- State ---
-        let audioContext = null;
-        let currentAudioSource = null;
-        let boardData = {}; // Now an object containing settings and sections
-        let confirmCallback = null;
-        let draggedItem = null;
-
-        const defaultSettings = {
-            title: "My Soundboard",
-            theme: {
-                '--background-color': '#111827',
-                '--surface-color': '#1f2937',
-                '--primary-color': '#3b82f6',
-                '--text-primary': '#f9fafb',
-            },
-            buttonShape: 'rounded-xl'
-        };
-
-        // --- Core Functions ---
-        const loadData = () => {
-            try {
-                if (window.location.hash && window.location.hash.startsWith('#data=')) {
-                    const encodedData = window.location.hash.substring(6);
-                    const compressed = atob(encodedData).split('').map(c => c.charCodeAt(0));
-                    const decompressed = pako.inflate(new Uint8Array(compressed), { to: 'string' });
-                    boardData = JSON.parse(decompressed);
-                    showNotification('Loaded soundboard from shared link!', 'info');
-                } else {
-                    const savedData = localStorage.getItem('soundboardDataV2');
-                    boardData = savedData ? JSON.parse(savedData) : { settings: { ...defaultSettings }, sections: [] };
-                }
-                if (!boardData.settings) boardData.settings = { ...defaultSettings };
-                if (!boardData.sections) boardData.sections = [];
-
-            } catch (error) {
-                console.error("Failed to load data:", error);
-                showNotification("Could not load data. Using default.", "error");
-                boardData = { settings: { ...defaultSettings }, sections: [] };
-            }
-            const savedButtonSize = localStorage.getItem('soundboardButtonSize') || '50';
-            buttonSizeSlider.value = savedButtonSize;
-            buttonSizeInput.value = savedButtonSize;
-            applySettings();
-            renderSoundboard();
-        };
-
-        const saveData = () => {
-            localStorage.setItem('soundboardDataV2', JSON.stringify(boardData));
-            if (window.location.hash) {
-                history.pushState("", document.title, window.location.pathname + window.location.search);
-            }
-        };
-        const saveButtonSize = () => localStorage.setItem('soundboardButtonSize', buttonSizeSlider.value);
-
-        function applySettings() {
-            const settings = boardData.settings;
-            boardTitle.textContent = settings.title;
-            document.title = settings.title;
-            Object.entries(settings.theme).forEach(([key, value]) => {
-                document.documentElement.style.setProperty(key, value);
-            });
-            boardIcon.style.color = settings.theme['--primary-color'];
-            stopSoundBtn.style.backgroundColor = settings.theme['--primary-color'].replace('600', '700');
-            updateAppearanceModalUI();
+    // Load State
+    async function init() {
+      const saved = localStorage.getItem("custom_soundboard_data");
+      if (saved) {
+        sounds = JSON.parse(saved);
+      } else {
+        // Try fetching sounds.json from repo root if published
+        try {
+          const res = await fetch("sounds.json");
+          if (res.ok) {
+            sounds = await res.json();
+          } else {
+            sounds = defaultFavorites;
+          }
+        } catch {
+          sounds = defaultFavorites;
         }
+      }
+      render();
+    }
 
-        function stopSound() {
-            if (currentAudioSource) {
-                try { 
-                    currentAudioSource.stop(); 
-                    currentAudioSource = null;
-                } catch (e) {
-                    console.error("Error stopping sound:", e);
-                }
-            }
-        }
+    function saveState() {
+      localStorage.setItem("custom_soundboard_data", JSON.stringify(sounds));
+    }
 
-        function playSound(url) {
-            stopSound(); // Stop any existing sound before playing a new one
-            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioContext.state === 'suspended') audioContext.resume();
+    // Render Tag Bar & Sound Grid
+    function render() {
+      renderTags();
+      renderGrid();
+    }
+
+    function renderTags() {
+      const tagBar = document.getElementById("tagBar");
+      const allTags = new Set(["All"]);
+      sounds.forEach(s => (s.tags || []).forEach(t => allTags.add(t)));
+
+      tagBar.innerHTML = "";
+      allTags.forEach(tag => {
+        const pill = document.createElement("div");
+        pill.className = `tag-pill ${tag === selectedTag ? 'active' : ''}`;
+        pill.innerText = tag;
+        pill.onclick = () => { selectedTag = tag; render(); };
+        tagBar.appendChild(pill);
+      });
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById("soundGrid");
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      const sort = document.getElementById("sortSelect").value;
+
+      let filtered = sounds.filter(s => {
+        const matchesTag = selectedTag === "All" || (s.tags && s.tags.includes(selectedTag));
+        const matchesSearch = s.title.toLowerCase().includes(search) || 
+                              (s.tags && s.tags.some(t => t.toLowerCase().includes(search)));
+        return matchesTag && matchesSearch;
+      });
+
+      // Sorting Logic
+      if (sort === "az") filtered.sort((a,b) => a.title.localeCompare(b.title));
+      if (sort === "za") filtered.sort((a,b) => b.title.localeCompare(a.title));
+      if (sort === "newest") filtered.sort((a,b) => b.dateAdded - a.dateAdded);
+
+      grid.innerHTML = "";
+      filtered.forEach((sound, index) => {
+        const card = document.createElement("div");
+        card.className = "sound-card";
+        card.draggable = sort === "manual";
+        
+        // Drag events
+        card.ondragstart = () => { draggedIndex = index; card.classList.add("dragging"); };
+        card.ondragend = () => { card.classList.remove("dragging"); };
+        card.ondragover = (e) => e.preventDefault();
+        card.ondrop = () => handleDrop(index);
+
+        card.innerHTML = `
+          <div class="card-actions">
+            <button class="btn-icon" onclick="deleteSound('${sound.id}')" title="Delete">✕</button>
+          </div>
+          <button class="btn-trigger" id="btn-${sound.id}" style="background-color: ${sound.color || '#6366f1'};" onclick="playSound('${sound.id}', '${sound.url}')"></button>
+          <div class="sound-title">${sound.title}</div>
+          <div class="card-tags">
+            ${(sound.tags || []).map(t => `<span class="mini-tag">${t}</span>`).join('')}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Audio Playback
+    function playSound(id, url) {
+      const btn = document.getElementById(`btn-${id}`);
+
+      if (activeAudio[id]) {
+        activeAudio[id].pause();
+        activeAudio[id].currentTime = 0;
+        delete activeAudio[id];
+        if (btn) btn.classList.remove("playing");
+        return;
+      }
+
+      const audio = new Audio(url);
+      activeAudio[id] = audio;
+      if (btn) btn.classList.add("playing");
+
+      audio.play().catch(e => {
+        if (btn) btn.classList.remove("playing");
+        delete activeAudio[id];
+        fixBrokenSound(id);
+      });
+
+      audio.onended = () => {
+        delete activeAudio[id];
+        if (btn) btn.classList.remove("playing");
+      };
+    }
+
+    // Called when a sound fails to play. Lets the user paste a corrected
+    // URL right away instead of losing the sound or editing code.
+    function fixBrokenSound(id) {
+      const sound = sounds.find(s => s.id === id);
+      if (!sound) return;
+      const newUrl = prompt(
+        `"${sound.title}" won't play (the link is likely dead or wrong).\n\n` +
+        `Grab the real link: open the sound on myinstants.com, open DevTools > Network tab, ` +
+        `click Play there, and copy the .mp3 request URL. Paste it below to fix this sound ` +
+        `(or Cancel to leave it broken for now):`,
+        sound.url
+      );
+      if (newUrl && newUrl.trim() && newUrl.trim() !== sound.url) {
+        sound.url = newUrl.trim();
+        saveState();
+      }
+    }
+
+    function stopAllSounds() {
+      Object.keys(activeAudio).forEach(id => {
+        activeAudio[id].pause();
+        const btn = document.getElementById(`btn-${id}`);
+        if (btn) btn.classList.remove("playing");
+      });
+      activeAudio = {};
+    }
+
+    // Manual Drag and Drop Reordering
+    function handleDrop(targetIndex) {
+      if (draggedIndex === null || draggedIndex === targetIndex) return;
+      const movedItem = sounds.splice(draggedIndex, 1)[0];
+      sounds.splice(targetIndex, 0, movedItem);
+      draggedIndex = null;
+      saveState();
+      render();
+    }
+
+    // Modal Control
+    function openModal(id) { document.getElementById(id).style.display = "flex"; }
+    function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+    // Add New Sound
+    function saveNewSound() {
+      const title = document.getElementById("addTitle").value.trim();
+      let url = document.getElementById("addUrl").value.trim();
+      const tags = document.getElementById("addTags").value.split(",").map(t => t.trim()).filter(Boolean);
+      const color = document.getElementById("addColor").value;
+
+      if (!title || !url) return alert("Title and URL are required.");
+
+      // Convert Myinstants page link to MP3 URL if needed
+      if (url.includes("myinstants.com/en/instant/")) {
+        const slug = url.split("/instant/")[1].replace(/\/$/, "").replace(/-\d+$/, "");
+        url = `https://www.myinstants.com/media/sounds/${slug}.mp3`;
+      }
+
+      sounds.push({
+        id: "snd_" + Date.now(),
+        title, url, tags, color,
+        dateAdded: Date.now()
+      });
+
+      saveState();
+      render();
+      closeModal("addModal");
+      document.getElementById("addTitle").value = "";
+      document.getElementById("addUrl").value = "";
+      document.getElementById("addTags").value = "";
+    }
+
+    function deleteSound(id) {
+      if (!confirm("Remove this sound?")) return;
+      sounds = sounds.filter(s => s.id !== id);
+      saveState();
+      render();
+    }
+
+    // Process Myinstants HTML Import
+    function processHTMLImport() {
+      const rawHtml = document.getElementById("importHtmlText").value;
+      if (!rawHtml) return;
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(rawHtml, "text/html");
+      const links = doc.querySelectorAll("a.instant-link, a[href*='/instant/']");
+
+      let addedCount = 0;
+      links.forEach(link => {
+        const title = link.textContent.trim();
+        const href = link.getAttribute("href") || "";
+        if (title && href) {
+          const match = href.match(/\/instant\/([^\/]+)\/?/);
+          if (match && match[1]) {
+            const soundSlug = match[1].replace(/-\d+$/, "");
+            const mp3Url = `https://www.myinstants.com/media/sounds/${soundSlug}.mp3`;
             
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) throw new Error(`Network response was not ok (${response.status})`);
-                    return response.arrayBuffer();
-                })
-                .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
-                .then(audioBuffer => {
-                    const source = audioContext.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(audioContext.destination);
-                    source.start(0);
-                    currentAudioSource = source;
-                    source.onended = () => { if (currentAudioSource === source) currentAudioSource = null; };
-                }).catch(e => {
-                    let userMessage = `Error playing sound: ${e.message}`;
-                    if (e instanceof TypeError) userMessage = 'Could not play sound. The audio host may be blocking it (CORS policy).';
-                    showNotification(userMessage, 'error');
-                    console.error('Error with audio playback:', e);
-                });
+            // Avoid duplicate additions
+            if (!sounds.some(s => s.title === title)) {
+              sounds.push({
+                id: "snd_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+                title: title,
+                url: mp3Url,
+                tags: ["Imported"],
+                color: "#" + Math.floor(Math.random()*16777215).toString(16),
+                dateAdded: Date.now()
+              });
+              addedCount++;
+            }
+          }
         }
-        
-        function showNotification(message, type = 'info') {
-            const container = document.getElementById('notification-container');
-            const toast = document.createElement('div');
-            const bgColor = type === 'error' ? 'bg-red-600' : 'bg-blue-600';
-            toast.className = `notification-toast ${bgColor} text-white font-bold py-2 px-4 rounded-lg shadow-lg`;
-            toast.textContent = message;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.style.transition = 'opacity 0.5s';
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 500);
-            }, 3000);
-        }
+      });
 
-        // --- Rendering ---
-        
-        function getTextColorForBg(hexColor) {
-            if (!hexColor || hexColor.length < 7) return 'var(--text-primary)';
-            const r = parseInt(hexColor.substr(1, 2), 16);
-            const g = parseInt(hexColor.substr(3, 2), 16);
-            const b = parseInt(hexColor.substr(5, 2), 16);
-            const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-            return (yiq >= 128) ? '#111827' : 'var(--text-primary)';
-        }
+      saveState();
+      render();
+      closeModal("importModal");
+      document.getElementById("importHtmlText").value = "";
+      alert(`Successfully imported ${addedCount} sounds!`);
+    }
 
-        function getColumnCount(sliderValue) {
-            const value = 101 - parseInt(sliderValue);
-            // Map slider range 1-100 to column range 1-16
-            return Math.ceil( (value / 100) * 15) + 1;
-        }
+    // Export JSON Configuration for GitHub Pages hosting
+    function exportJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sounds, null, 2));
+      const dlAnchor = document.createElement("a");
+      dlAnchor.setAttribute("href", dataStr);
+      dlAnchor.setAttribute("download", "sounds.json");
+      document.body.appendChild(dlAnchor);
+      dlAnchor.click();
+      dlAnchor.remove();
+    }
 
-        function renderSoundboard(filteredData = null) {
-            const sectionsToRender = filteredData || boardData.sections;
-            soundboardGrid.innerHTML = '';
-            document.getElementById('empty-state').style.display = (sectionsToRender.length === 0 && !filteredData) ? 'block' : 'none';
+    // Event Listeners
+    document.getElementById("searchInput").addEventListener("input", renderGrid);
+    document.getElementById("sortSelect").addEventListener("change", renderGrid);
 
-            const columns = getColumnCount(buttonSizeSlider.value);
-
-            sectionsToRender.forEach(section => {
-                const sectionEl = document.createElement('div');
-                sectionEl.className = 'bg-surface-color rounded-xl p-4 border border-border-color draggable-section';
-                sectionEl.dataset.id = section.id;
-                sectionEl.style.gridColumn = `span ${section.width || 4}`;
-
-                sectionEl.innerHTML = `
-                    <div class="flex justify-between items-center mb-4 pb-3 border-b border-border-color">
-                        <h2 class="text-xl font-bold truncate">${section.title}</h2>
-                        <div class="edit-controls hidden items-center gap-2 text-text-secondary">
-                            <button class="edit-item-btn hover:text-white" data-type="section" data-id="${section.id}" title="Edit Section"><i class="fas fa-pencil-alt"></i></button>
-                            <button class="delete-item-btn hover:text-red-400" data-type="section" data-id="${section.id}" title="Delete Section"><i class="fas fa-trash"></i></button>
-                            <span class="drag-handle cursor-move" title="Drag Section"><i class="fas fa-grip-vertical"></i></span>
-                        </div>
-                    </div>
-                    <div class="grid gap-3 sound-container"></div>`;
-
-                const soundContainer = sectionEl.querySelector('.sound-container');
-                soundContainer.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
-
-                (section.sounds || []).forEach(sound => soundContainer.appendChild(createSoundButton(sound, section.id)));
-                
-                const addSoundBtn = document.createElement('button');
-                addSoundBtn.className = `add-sound-btn hidden aspect-square border-2 border-dashed border-gray-600 ${boardData.settings.buttonShape} flex items-center justify-center text-gray-500 hover:bg-gray-700 hover:text-white transition`;
-                addSoundBtn.dataset.sectionId = section.id;
-                addSoundBtn.innerHTML = '<i class="fas fa-plus fa-2x"></i>';
-                soundContainer.appendChild(addSoundBtn);
-
-                soundboardGrid.appendChild(sectionEl);
-            });
-            updateEditMode();
-        }
-
-        function createSoundButton(sound, sectionId) {
-            const soundBtn = document.createElement('button');
-            const buttonShape = boardData.settings.buttonShape || 'rounded-xl';
-            const columns = getColumnCount(buttonSizeSlider.value);
-            
-            let textSize = 'text-sm';
-            if (columns >= 10) textSize = 'text-xs';
-            if (columns >= 14) textSize = 'text-[10px] leading-tight';
-
-            const textColor = sound.textColor || getTextColorForBg(sound.color);
-
-            soundBtn.className = `sound-btn font-semibold py-2 px-1 flex items-center justify-center text-center aspect-square draggable ${buttonShape}`;
-            soundBtn.dataset.url = sound.url;
-            soundBtn.dataset.id = sound.id;
-            soundBtn.dataset.sectionId = sectionId;
-            soundBtn.style.backgroundColor = sound.color || 'var(--surface-color)';
-            soundBtn.style.color = textColor;
-
-            soundBtn.innerHTML = `
-                <div class="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity edit-overlay hidden items-center justify-center gap-2 text-xs" style="color: ${textColor}">
-                    <span class="edit-item-btn cursor-pointer p-1 rounded-full hover:bg-black/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Edit Sound"><i class="fas fa-pencil-alt"></i></span>
-                    <span class="delete-item-btn cursor-pointer p-1 rounded-full hover:bg-black/20" data-type="sound" data-id="${sound.id}" data-section-id="${sectionId}" title="Delete Sound"><i class="fas fa-trash"></i></span>
-                </div>
-                <span class="${textSize} break-words pointer-events-none">${sound.name}</span>`;
-            return soundBtn;
-        }
-
-        // --- Event Handlers ---
-        soundboardGrid.addEventListener('click', (e) => {
-            const targetButton = e.target.closest('button, span');
-            if (!targetButton) return;
-
-            const isEditMode = document.body.classList.contains('edit-mode');
-            if (isEditMode) {
-                if (targetButton.classList.contains('add-sound-btn')) {
-                    openModal('sound', 'add', { sectionId: targetButton.dataset.sectionId });
-                } else if (targetButton.classList.contains('edit-item-btn')) {
-                    openModal(targetButton.dataset.type, 'edit', targetButton.dataset);
-                } else if (targetButton.classList.contains('delete-item-btn')) {
-                    const { type, id, sectionId } = targetButton.dataset;
-                    openConfirmModal(`this ${type}`, () => deleteItem(type, id, sectionId));
-                }
-            } else {
-                const soundBtn = e.target.closest('.sound-btn');
-                if (soundBtn) playSound(soundBtn.dataset.url);
-            }
-        });
-        
-        searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            if (!searchTerm) { renderSoundboard(); return; }
-            
-            const filteredSections = JSON.parse(JSON.stringify(boardData.sections))
-                .map(section => {
-                    section.sounds = (section.sounds || []).filter(sound => sound.name.toLowerCase().includes(searchTerm));
-                    return section;
-                }).filter(section => section.sounds.length > 0);
-            renderSoundboard(filteredSections);
-        });
-
-        editModeToggle.addEventListener('change', () => {
-            document.body.classList.toggle('edit-mode');
-            updateEditMode();
-        });
-        
-        function updateEditMode() {
-            const isEditMode = document.body.classList.contains('edit-mode');
-            document.getElementById('edit-actions').style.display = isEditMode ? 'flex' : 'none';
-            document.body.classList.toggle('edit-mode-active', isEditMode);
-            
-            document.querySelectorAll('.draggable, .draggable-section').forEach(el => el.setAttribute('draggable', isEditMode));
-            document.querySelectorAll('.add-sound-btn').forEach(btn => btn.style.display = isEditMode ? 'flex' : 'none');
-            document.querySelectorAll('.edit-controls').forEach(el => el.style.display = isEditMode ? 'flex' : 'none');
-        }
-        
-        buttonSizeSlider.addEventListener('input', () => {
-            buttonSizeInput.value = buttonSizeSlider.value;
-            renderSoundboard();
-        });
-        buttonSizeInput.addEventListener('input', () => {
-            const val = Math.max(1, Math.min(100, parseInt(buttonSizeInput.value) || 1));
-            buttonSizeSlider.value = val;
-            buttonSizeInput.value = val;
-            renderSoundboard();
-        });
-        buttonSizeSlider.addEventListener('change', saveButtonSize);
-        buttonSizeInput.addEventListener('change', saveButtonSize);
-        
-        stopSoundBtn.addEventListener('click', stopSound);
-
-        // --- Modal Logic ---
-        function openModal(type, mode, data) {
-            modalForm.reset();
-            const { id = '', sectionId = '' } = data;
-            document.getElementById('editId').value = id;
-            document.getElementById('editType').value = type;
-            document.getElementById('editSectionId').value = sectionId;
-
-            ['form-group-url', 'form-group-color', 'form-group-width', 'form-group-bulk-color', 'form-group-text-color', 'form-group-bulk-text-color'].forEach(id => {
-                const group = document.getElementById(id);
-                group.style.display = 'none';
-                if (group.parentElement.classList.contains('grid')) {
-                    // Part of a grid, don't hide parent
-                } else {
-                     group.parentElement.style.display = 'none';
-                }
-            });
-
-
-            if (type === 'section') {
-                ['form-group-width', 'form-group-bulk-color', 'form-group-bulk-text-color'].forEach(id => {
-                    const el = document.getElementById(id);
-                    el.style.display = 'block';
-                    el.parentElement.style.display = 'block';
-                });
-                document.getElementById('modalTitle').textContent = mode === 'add' ? 'Add New Section' : 'Edit Section';
-                if (mode === 'edit') {
-                    const section = boardData.sections.find(s => s.id === id);
-                    document.getElementById('itemName').value = section.title;
-                    document.getElementById('itemWidth').value = section.width || 4;
-                } else {
-                    document.getElementById('itemWidth').value = 4;
-                }
-            } else { // 'sound'
-                 ['form-group-url', 'form-group-color', 'form-group-text-color'].forEach(id => {
-                    const el = document.getElementById(id);
-                    el.style.display = 'block';
-                    el.parentElement.style.display = 'block';
-                 });
-                document.getElementById('modalTitle').textContent = mode === 'add' ? 'Add New Sound' : 'Edit Sound';
-                 if (mode === 'edit') {
-                    const section = boardData.sections.find(s => s.id === sectionId);
-                    const sound = section.sounds.find(snd => snd.id === id);
-                    document.getElementById('itemName').value = sound.name;
-                    document.getElementById('itemUrl').value = sound.url;
-                    document.getElementById('itemColor').value = sound.color || '#1f2937';
-                    document.getElementById('itemTextColor').value = sound.textColor || getTextColorForBg(sound.color);
-                } else {
-                    document.getElementById('itemColor').value = '#1f2937';
-                    document.getElementById('itemTextColor').value = '#f9fafb';
-                }
-            }
-            modal.classList.remove('hidden');
-        }
-        
-        function closeModal() {
-            modal.classList.add('hidden');
-            appearanceModal.classList.add('hidden');
-            confirmModal.classList.add('hidden');
-            shareModal.classList.add('hidden');
-            libraryModal.classList.add('hidden');
-            titleModal.classList.add('hidden');
-        }
-
-        modalForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const nameInput = document.getElementById('itemName');
-            const urlInput = document.getElementById('itemUrl');
-            const type = document.getElementById('editType').value;
-
-            if (!nameInput.value.trim()) { showNotification('Name is required.', 'error'); return; }
-            if (type === 'sound') {
-                try { new URL(urlInput.value); } catch (_) { showNotification('Please enter a valid URL.', 'error'); return; }
-            }
-            
-            const id = document.getElementById('editId').value;
-            const name = nameInput.value;
-
-            if (type === 'section') {
-                const width = document.getElementById('itemWidth').value;
-                const bulkColor = document.getElementById('itemBulkColor').value;
-                const bulkTextColor = document.getElementById('itemBulkTextColor').value;
-                if (id) {
-                    const section = boardData.sections.find(s => s.id === id);
-                    if(section) {
-                        section.title = name;
-                        section.width = width;
-                        (section.sounds || []).forEach(sound => {
-                            sound.color = bulkColor;
-                            sound.textColor = bulkTextColor;
-                        });
-                    }
-                } else {
-                    boardData.sections.push({ id: `section-${Date.now()}`, title: name, width: width, sounds: [] });
-                }
-            } else { // sound
-                const url = urlInput.value;
-                const color = document.getElementById('itemColor').value;
-                const textColor = document.getElementById('itemTextColor').value;
-                const sectionId = document.getElementById('editSectionId').value;
-                const section = boardData.sections.find(s => s.id === sectionId);
-                if (!section) { showNotification('Error: Section not found!', 'error'); return; }
-
-                if (id) { // Editing existing sound
-                    const sound = section.sounds.find(snd => snd.id === id);
-                    if (sound) { Object.assign(sound, { name, url, color, textColor }); }
-                } else { // Adding new sound
-                    if (!section.sounds) section.sounds = [];
-                    section.sounds.push({ id: `sound-${Date.now()}`, name, url, color, textColor });
-                }
-            }
-            saveData();
-            renderSoundboard();
-            closeModal();
-            showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} saved successfully!`);
-        });
-
-        [cancelBtn, appearanceCloseBtn, shareCloseBtn, libraryCancelBtn, titleCancelBtn].forEach(btn => btn.addEventListener('click', closeModal));
-        addSectionBtn.addEventListener('click', () => openModal('section', 'add', {}));
-
-        editTitleBtn.addEventListener('click', () => {
-            document.getElementById('newBoardTitle').value = boardData.settings.title;
-            titleModal.classList.remove('hidden');
-        });
-
-        titleModalForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const newTitle = document.getElementById('newBoardTitle').value.trim();
-            if (newTitle) {
-                boardData.settings.title = newTitle;
-                saveData();
-                applySettings();
-                closeModal();
-                showNotification('Soundboard name updated!');
-            } else {
-                showNotification('Name cannot be empty.', 'error');
-            }
-        });
-
-        // --- Confirmation Modal ---
-        function openConfirmModal(actionText, onConfirm) {
-            document.getElementById('confirmModalText').textContent = `Are you sure you want to delete ${actionText}?`;
-            confirmCallback = onConfirm;
-            confirmModal.classList.remove('hidden');
-        }
-
-        document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
-            if (confirmCallback) confirmCallback();
-            closeModal();
-        });
-        document.getElementById('confirmCancelBtn').addEventListener('click', closeModal);
-
-        // --- CRUD operations ---
-        function deleteItem(type, id, sectionId) {
-            if (type === 'section') {
-                boardData.sections = boardData.sections.filter(s => s.id !== id);
-            } else {
-                const section = boardData.sections.find(s => s.id === sectionId);
-                if (section) section.sounds = section.sounds.filter(snd => snd.id !== id);
-            }
-            saveData();
-            renderSoundboard();
-            showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted.`, 'info');
-        }
-        
-        // --- Drag and Drop ---
-        soundboardGrid.addEventListener('dragstart', (e) => {
-            if (!document.body.classList.contains('edit-mode-active')) { e.preventDefault(); return; }
-            draggedItem = e.target;
-            setTimeout(() => e.target.classList.add('dragging'), 0);
-        });
-
-        soundboardGrid.addEventListener('dragend', () => {
-            draggedItem?.classList.remove('dragging');
-            draggedItem = null;
-        });
-
-        soundboardGrid.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (!draggedItem) return;
-            const target = e.target.closest('.draggable, .draggable-section, .sound-container');
-            if (target) {
-                document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-                if (!target.classList.contains('sound-container')) {
-                    target.classList.add('drag-over');
-                }
-            }
-        });
-
-        soundboardGrid.addEventListener('dragleave', e => e.target.closest('.drag-over')?.classList.remove('drag-over'));
-
-        soundboardGrid.addEventListener('drop', (e) => {
-            e.preventDefault();
-            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-            if (!draggedItem) return;
-
-            const isSectionDrag = draggedItem.classList.contains('draggable-section');
-            const target = e.target.closest(isSectionDrag ? '.draggable-section' : '.draggable, .sound-container');
-            if (!target || target === draggedItem) return;
-            
-            if (isSectionDrag) {
-                const fromIndex = boardData.sections.findIndex(s => s.id === draggedItem.dataset.id);
-                const toIndex = boardData.sections.findIndex(s => s.id === target.dataset.id);
-                const [moved] = boardData.sections.splice(fromIndex, 1);
-                boardData.sections.splice(toIndex, 0, moved);
-            } else { // Sound drag
-                const fromSection = boardData.sections.find(s => s.id === draggedItem.dataset.sectionId);
-                const fromSoundIndex = fromSection.sounds.findIndex(s => s.id === draggedItem.dataset.id);
-                
-                const targetSoundContainer = target.closest('.sound-container');
-                const toSection = boardData.sections.find(s => s.id === targetSoundContainer.closest('.draggable-section').dataset.id);
-                const toSoundEl = target.closest('.draggable');
-                let toSoundIndex = toSoundEl ? toSection.sounds.findIndex(s => s.id === toSoundEl.dataset.id) : toSection.sounds.length;
-                
-                const [movedSound] = fromSection.sounds.splice(fromSoundIndex, 1);
-                toSection.sounds.splice(toSoundIndex, 0, movedSound);
-            }
-            saveData();
-            renderSoundboard();
-        });
-        
-        // --- Import / Export / Share ---
-        exportBtn.addEventListener('click', () => {
-            const dataStr = JSON.stringify(boardData, null, 2);
-            const dataBlob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(dataBlob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${boardData.settings.title.replace(/ /g,"_") || 'soundboard'}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        });
-
-        importInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const importedData = JSON.parse(event.target.result);
-                    if (importedData.settings && importedData.sections) {
-                        openConfirmModal('your current soundboard by importing a new one', () => {
-                            boardData = importedData;
-                            saveData();
-                            applySettings();
-                            renderSoundboard();
-                            showNotification('Soundboard imported successfully!');
-                        });
-                    } else { showNotification('Invalid soundboard file format.', 'error'); }
-                } catch (error) { showNotification('Error parsing JSON file.', 'error'); }
-                 finally { importInput.value = ''; }
-            };
-            reader.readAsText(file);
-        });
-        
-        shareBtn.addEventListener('click', () => {
-            const jsonString = JSON.stringify(boardData);
-            const compressed = pako.deflate(jsonString);
-            const encodedData = btoa(String.fromCharCode.apply(null, compressed));
-            const shareLink = `${window.location.origin}${window.location.pathname}#data=${encodedData}`;
-            
-            const shareLinkInput = document.getElementById('shareLinkInput');
-            shareLinkInput.value = shareLink;
-            shareModal.classList.remove('hidden');
-            shareLinkInput.select();
-        });
-
-        copyLinkBtn.addEventListener('click', () => {
-            const shareLinkInput = document.getElementById('shareLinkInput');
-            shareLinkInput.select();
-            try {
-                document.execCommand('copy');
-                showNotification('Link copied to clipboard!', 'info');
-            } catch (err) {
-                showNotification('Failed to copy link.', 'error');
-                console.error('Copy failed', err);
-            }
-        });
-
-        // --- Sound Library Logic ---
-        libraryBtn.addEventListener('click', async () => {
-            libraryModal.classList.remove('hidden');
-            librarySoundList.innerHTML = '<div class="flex justify-center items-center p-8"><div class="spinner !w-8 !h-8"></div></div>';
-            
-            try {
-                const response = await fetch('https://api.github.com/repos/MrLynchWAMS/soundboard/contents/sounds');
-                if (!response.ok) throw new Error(`GitHub API Error: ${response.status}`);
-                const files = await response.json();
-                
-                librarySoundList.innerHTML = '';
-                const audioFiles = files.filter(file => file.type === 'file' && /\.(mp3|wav|ogg|m4a)$/i.test(file.name));
-
-                if (audioFiles.length === 0) {
-                    librarySoundList.innerHTML = '<p class="text-center text-gray-500 p-4">No audio files found in the GitHub repository `sounds` folder.</p>';
-                    return;
-                }
-
-                audioFiles.forEach(file => {
-                    const soundEl = document.createElement('div');
-                    soundEl.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-700';
-                    soundEl.innerHTML = `
-                        <label class="flex items-center gap-3 cursor-pointer w-full">
-                            <input type="checkbox" data-name="${file.name}" data-url="${file.download_url}" class="form-checkbox h-5 w-5 bg-gray-800 border-gray-600 rounded text-blue-500 focus:ring-blue-500">
-                            <span class="truncate">${file.name}</span>
-                        </label>
-                        <button class="preview-lib-sound-btn p-2 text-gray-400 hover:text-white" data-url="${file.download_url}">
-                            <i class="fas fa-play"></i>
-                        </button>
-                    `;
-                    librarySoundList.appendChild(soundEl);
-                });
-            } catch (error) {
-                console.error("Error fetching sound library:", error);
-                librarySoundList.innerHTML = `<p class="text-center text-red-400 p-4">Could not load library. ${error.message}</p>`;
-            }
-        });
-
-        librarySoundList.addEventListener('click', e => {
-            const previewBtn = e.target.closest('.preview-lib-sound-btn');
-            if (previewBtn) {
-                playSound(previewBtn.dataset.url);
-            }
-        });
-        
-        librarySelectAll.addEventListener('click', () => {
-            const checkboxes = librarySoundList.querySelectorAll('input[type="checkbox"]');
-            const isAllChecked = Array.from(checkboxes).every(cb => cb.checked);
-            checkboxes.forEach(cb => cb.checked = !isAllChecked);
-            librarySelectAll.textContent = isAllChecked ? 'Deselect All' : 'Select All';
-        });
-
-        libraryAddBtn.addEventListener('click', () => {
-            const selectedSounds = Array.from(librarySoundList.querySelectorAll('input[type="checkbox"]:checked'));
-            if (selectedSounds.length === 0) {
-                showNotification('No sounds selected.', 'error');
-                return;
-            }
-
-            const newSection = {
-                id: `section-${Date.now()}`,
-                title: 'From Library',
-                width: 4,
-                sounds: selectedSounds.map((input, i) => ({
-                    id: `sound-${Date.now() + i}`,
-                    name: input.dataset.name.replace(/\.[^/.]+$/, ""), // Remove file extension for name
-                    url: input.dataset.url,
-                    color: '#1f2937'
-                }))
-            };
-
-            boardData.sections.push(newSection);
-            saveData();
-            renderSoundboard();
-            closeModal();
-            showNotification(`Added ${selectedSounds.length} sounds.`, 'info');
-        });
-        
-        // --- Appearance Modal ---
-        appearanceBtn.addEventListener('click', () => {
-            updateAppearanceModalUI();
-            appearanceModal.classList.remove('hidden');
-        });
-        
-        appearanceCloseBtn.addEventListener('click', () => {
-            appearanceModal.classList.add('hidden');
-            saveData();
-            renderSoundboard();
-        });
-
-        resetAppearanceBtn.addEventListener('click', () => {
-            boardData.settings.theme = { ...defaultSettings.theme };
-            boardData.settings.buttonShape = defaultSettings.buttonShape;
-            applySettings();
-        });
-
-        function updateAppearanceModalUI() {
-            Object.entries(boardData.settings.theme).forEach(([key, value]) => {
-                const input = document.querySelector(`[data-css-var="${key}"]`);
-                if(input) input.value = value;
-            });
-            const shape = boardData.settings.buttonShape;
-            const radio = document.querySelector(`input[name="buttonShape"][value="${shape}"]`);
-            if (radio) radio.checked = true;
-            updateRadioSelection();
-        }
-
-        document.getElementById('appearanceModal').addEventListener('input', e => {
-            if (e.target.dataset.cssVar) {
-                const cssVar = e.target.dataset.cssVar;
-                const color = e.target.value;
-                boardData.settings.theme[cssVar] = color;
-                document.documentElement.style.setProperty(cssVar, color);
-                boardIcon.style.color = boardData.settings.theme['--primary-color'];
-                stopSoundBtn.style.backgroundColor = boardData.settings.theme['--primary-color'].replace('600', '700');
-            }
-            if(e.target.name === 'buttonShape') {
-                boardData.settings.buttonShape = e.target.value;
-                updateRadioSelection();
-            }
-        });
-        
-        function updateRadioSelection() {
-            document.querySelectorAll('input[name="buttonShape"]').forEach(radio => {
-                const label = radio.parentElement;
-                if(radio.checked) {
-                    label.style.backgroundColor = 'var(--primary-color)';
-                    label.style.color = 'var(--text-primary)';
-                } else {
-                    label.style.backgroundColor = 'transparent';
-                    label.style.color = 'var(--text-secondary)';
-                }
-            });
-        }
-        
-        // --- Initialize ---
-        loadData();
-    });
-    </script>
+    // Run Initializer
+    init();
+  </script>
 </body>
 </html>
-
